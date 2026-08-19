@@ -1,7 +1,11 @@
 # Standalone (non-flake) entry. Flake consumers should use the `.lib` output.
 #
-# gen-assemble declares no inputs, so — as with gen-prelude, gen-algebra and gen-memo at its own
-# scaffold — the standalone entry is the lib value itself rather than a function of its
-# dependencies. When the toolkit acquires dependencies this file becomes a function whose defaults
-# fetch the flake-locked revs, per the gen root-file convention.
+# gen-assemble declares NO INPUTS, and that is a decision the content makes rather than one the
+# scaffold made on its behalf: the toolkit takes its substrate — the evaluator, the utility base,
+# the record algebra — as INJECTED VALUES constructed inside the consumer's own evaluation, which
+# is what the gen↔gen boundary rule asks for. So there is nothing here to fetch and nothing to pin,
+# and this entry is the library value itself: a function of the substrate the caller supplies.
+#
+# A consequence, not an omission: zero inputs means no root lock file. The only lock in this
+# repository is ./ci/flake.lock, and it is what the acceptance run uses.
 import ./lib
