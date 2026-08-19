@@ -40,14 +40,27 @@
 # id, overlaid — so the declared member set across contributions is a SET UNION with no ordering
 # rule required.
 #
-# ★ AND `vertices` IS THE ONLY THING THAT DECLARES A NODE A RELATION MAY NAME — the check covers the
-# relation channels; `decls`/`types` content keys sit outside it. EVERY EDGE ENDPOINT IS CHECKED
-# AGAINST THE DECLARED MEMBER UNION AT THIS BOUNDARY, UNCONDITIONALLY. A node an edge merely MENTIONS is not
-# thereby a member, and the difference is invisible downstream — the substrate's graph unions both
-# endpoints of every edge into its node set by construction, so an edge naming an id nobody declared
-# INVENTS that node and the assembly widens with nothing said. That is why a graph-borne vertex does
-# not declare either: the same union puts it in the node set anyway, so reading it as a declaration
-# would make this check agree with every edge it was written to refuse.
+# ★ AND `vertices` IS THE ONLY THING THAT DECLARES. EVERY ID A CONTRIBUTION NAMES — BOTH ENDPOINTS
+# OF EVERY EDGE IT CARRIES, AND EVERY KEY OF ITS `decls` AND `types` — IS CHECKED AGAINST THE
+# DECLARED MEMBER UNION AT THIS BOUNDARY, UNCONDITIONALLY. A node a contribution merely MENTIONS is
+# not thereby a member, and the difference is invisible downstream — the constructor's node set
+# absorbs an edge endpoint and a content key ALIKE, so an id nobody declared INVENTS that node and
+# the assembly widens with nothing said. That is why a graph-borne vertex does not declare either:
+# the same union puts it in the node set anyway, so reading it as a declaration would make this
+# check agree with every edge it was written to refuse.
+#
+# ★ CONTENT KEYS ARE CHECKED ON THE MEASURED MECHANISM AND NOT BY ANALOGY WITH EDGES. A `decls` or
+# `types` entry for an id no layer declared reaches the assembly AS A NODE — the constructor derives
+# its node set from the content records as well as from the graph — so the two entrances are one
+# defect, and covering only the relation channels would have closed one door onto a room with two.
+#
+# ★ THE ONE CHANNEL THIS DOES NOT CLOSE, STATED HERE BECAUSE AN UNQUALIFIED SAFETY CLAIM READS AS
+# "NO ORACLE NEEDED": an ISOLATED VERTEX carried inside a contributed GRAPH. The scan ranges over a
+# graph's EDGES, so a lone vertex overlaid into `parentGraph` or `importGraph` enters the node set
+# with no layer declaring it and nothing said — measured green at this landing. Whether to close it
+# is a live design question rather than a reading this construction may take on its own: `vertices`
+# and a graph's vertex set would then be two spellings of one declaration, which is the collapse the
+# paragraph above refuses.
 {
   prelude,
   scope,
@@ -208,6 +221,45 @@ let
       ) cs
     );
 
+  # THE CONTENT RECORDS, under the family name the diagnostic has to name them by. They are
+  # enumerated rather than inlined for the reason `relationsOf` is: "the id is not declared" is not
+  # actionable without the key a caller has to open to fix it, and a family read off a list is a
+  # fact the finding carries rather than a string the message hard-codes twice.
+  contentFamilies = [
+    "decls"
+    "types"
+  ];
+
+  # THE UNDECLARED-CONTENT-KEY FACTS AS DATA, on the construction the endpoint facts use and against
+  # the same global index — rendered by the refusal rather than computed inside it.
+  #
+  # ★ THE UNION IS GLOBAL HERE TOO, AND FOR A REASON THIS HALF MAKES SHARPER. A layer supplying
+  # content for a member another layer declared is not an edge case, it is the ordinary shape of a
+  # layered assembly: a base enumerates the members and an override says something about them, which
+  # is the case the ordered fold exists to settle. So a key is tested against what EVERY layer
+  # declared, while the finding names the layer whose record carries it, because that is the text
+  # that has to change.
+  undeclaredContentKeysOf =
+    cs:
+    let
+      declared = declaredIndex cs;
+    in
+    prelude.unique (
+      prelude.concatMap (
+        c:
+        prelude.concatMap (
+          family:
+          prelude.concatMap (
+            id:
+            prelude.optional (!(builtins.hasAttr id declared)) {
+              contributor = c.name;
+              inherit family id;
+            }
+          ) (builtins.attrNames c.${family})
+        ) contentFamilies
+      ) cs
+    );
+
   # Each contributed edge graph tagged with the contribution that offered it. The tag is the only
   # reason a name travels past the constructor, and it is what makes the refusal below actionable.
   labelledEdgeGraphs =
@@ -233,6 +285,9 @@ let
     contributions: collisionsOf (labelledEdgeGraphs (prelude.imap0 normalise contributions));
 
   undeclaredEndpoints = contributions: undeclaredEndpointsOf (prelude.imap0 normalise contributions);
+
+  undeclaredContentKeys =
+    contributions: undeclaredContentKeysOf (prelude.imap0 normalise contributions);
 
   union =
     {
@@ -275,8 +330,9 @@ let
           map (g: builtins.removeAttrs g [ "contributor" ]) labelled;
 
       # ── THE DECLARED-MEMBERSHIP REFUSAL, at the protocol boundary ──
-      # An edge whose endpoint is not in the declared member union is refused by name, naming the
-      # contributing layer, the edge label and the missing id.
+      # An id a contribution names that is not in the declared member union is refused by name: an
+      # EDGE ENDPOINT, naming the contributing layer, the edge label and the missing id; and a
+      # `decls` or `types` KEY, naming the contributing layer, the family and the missing id.
       #
       # ★ IT IS UNCONDITIONAL, AND IT IS UNCONDITIONAL BY CONSTRUCTION RATHER THAN BY DEFAULT. The
       # substrate's `strict` knob governs when the SUBSTRATE validates the containment relation;
@@ -290,18 +346,28 @@ let
       # would be a property of which attribute a caller happens to read first, and a caller reading
       # only `decls` would receive a union built over edges naming nodes nobody declared.
       undeclared = undeclaredEndpointsOf cs;
+      undeclaredContent = undeclaredContentKeysOf cs;
+
+      # THE TWO CLASSES RENDER INTO ONE REFUSAL because they are one property with two entrances.
+      # Both name an id no layer declared, both put that id into the assembly by the same union, and
+      # both are discharged by the same two moves. Splitting them into two throws would make WHICH
+      # diagnostic a caller receives a fact about which entrance their contribution used first.
+      findings =
+        map (
+          f:
+          "the contribution `${f.contributor}` carries an edge under the label `${f.label}` whose `${f.side}` endpoint `${f.id}` is not a declared member"
+        ) undeclared
+        ++ map (
+          f:
+          "the contribution `${f.contributor}` carries a `${f.family}` entry for `${f.id}`, which is not a declared member"
+        ) undeclaredContent;
 
       requireDeclaredMembership =
         result:
-        if undeclared == [ ] then
+        if findings == [ ] then
           result
         else
-          throw "gen-assemble: ${
-            prelude.concatMapStringsSep "; " (
-              f:
-              "the contribution `${f.contributor}` carries an edge under the label `${f.label}` whose `${f.side}` endpoint `${f.id}` is not a declared member"
-            ) undeclared
-          }. Membership is DECLARED: a contribution's `vertices` is the only thing that declares a node a RELATION may name (`decls`/`types` content keys are not covered by this check), and the substrate unions BOTH endpoints of every edge into its node set — so an endpoint no layer declared is a node the relation invents, admitted with nothing said. Declare the id in some contribution's `vertices` — any layer's will do, since one layer may relate what another declared — or drop the edge.";
+          throw "gen-assemble: ${prelude.concatStringsSep "; " findings}. Membership is DECLARED: a contribution's `vertices` is the only thing that DECLARES a node, and every id a contribution names — an edge endpoint, or a `decls`/`types` key — is checked against what every layer declared, because the node set absorbs them alike. So an id no layer declared is a node the contribution invents, admitted with nothing said. Declare the id in some contribution's `vertices` — any layer's will do, since one layer may relate, or say something about, what another declared — or drop the edge or entry that names it.";
 
       # SHAPE: commutative union. The result is a graph, and which layer went first is not
       # observable in the node set or the edge relations.
@@ -371,5 +437,6 @@ in
     normalise
     collisions
     undeclaredEndpoints
+    undeclaredContentKeys
     ;
 }

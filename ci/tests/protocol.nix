@@ -171,6 +171,68 @@ let
     ];
   };
 
+  # ── FIXTURES FOR THE CONTENT-KEY HALF OF THE MEMBERSHIP REFUSAL ──
+  # One contribution declaring the member its own content names. The arms below are this
+  # contribution with one extra entry added under each family, so each of them differs from a
+  # passing case in exactly the fact under test.
+  contentDeclared = {
+    name = "contentDeclared";
+    vertices = [ (mkId "host" "a") ];
+    parentGraph = scope.vertex (mkId "host" "a");
+    decls = {
+      ${mkId "host" "a"} = {
+        tier = "base";
+      };
+    };
+    types = {
+      ${mkId "host" "a"} = "host";
+    };
+  };
+  ghostDecl = contentDeclared // {
+    decls = contentDeclared.decls // {
+      ${mkId "host" "ghost"} = {
+        tier = "invented";
+      };
+    };
+  };
+  phantomType = contentDeclared // {
+    types = contentDeclared.types // {
+      ${mkId "host" "phantom"} = "host";
+    };
+  };
+
+  # THE SHAPE THIS HALF WAS OPENED BY, kept verbatim: content under BOTH families for ids no layer
+  # declared. It assembled green before the check covered content, and its `nodeOrder` carried the
+  # two invented nodes.
+  contentBorneGhosts = contentDeclared // {
+    decls = contentDeclared.decls // {
+      ${mkId "host" "GHOST"} = {
+        t = 2;
+      };
+    };
+    types = contentDeclared.types // {
+      ${mkId "host" "PHANTOM"} = "host";
+    };
+  };
+
+  # The cross-contribution reference on the CONTENT half: one layer declares a member, another says
+  # something about it and declares only its own. Legal for the reason the relation half is — the
+  # union is global — and it is the ordinary shape of a layered assembly rather than an edge case,
+  # since a base enumerating members and an override describing them is what the ordered fold is for.
+  memberOwner = {
+    name = "memberOwner";
+    vertices = [ (mkId "host" "shared") ];
+  };
+  contentSupplier = {
+    name = "contentSupplier";
+    vertices = [ (mkId "host" "own") ];
+    decls = {
+      ${mkId "host" "shared"} = {
+        tier = "supplied";
+      };
+    };
+  };
+
   merged = union {
     contributions = [
       base
@@ -610,6 +672,144 @@ in
     # its cross-contribution reference — has no undeclared endpoints at all.
     test-control-a-clean-assembly-has-no-undeclared-endpoints = {
       expr = contribute.undeclaredEndpoints [
+        base
+        override
+      ];
+      expected = [ ];
+    };
+
+    # ── THE SAME REFUSAL OVER THE CONTENT KEYS: a `decls`/`types` entry for an id no layer
+    # declared is REFUSED ──
+    # Content invents a node by the same construction an edge does: the constructor derives its node
+    # set from the content records as well as from the graph, so an entry for an undeclared id
+    # widens the assembly with nothing said. Both families are asserted because the class is "a
+    # content key naming an undeclared id", and a suite that seeds one record is a suite about that
+    # record.
+    test-a-decls-entry-for-an-undeclared-id-is-refused = {
+      expr = throws (union {
+        contributions = [ ghostDecl ];
+      });
+      expected = true;
+    };
+    test-a-types-entry-for-an-undeclared-id-is-refused = {
+      expr = throws (union {
+        contributions = [ phantomType ];
+      });
+      expected = true;
+    };
+    # CONTROL: the same contribution with content for its DECLARED member passes, in the same run
+    # and through the same predicate. Without it the two refusals above are equally consistent with
+    # a union that refuses whatever carries content at all.
+    test-control-content-for-a-declared-member-passes = {
+      expr = throws (union {
+        contributions = [ contentDeclared ];
+      });
+      expected = false;
+    };
+
+    # ★ THE DIAGNOSTIC NAMES THE LAYER, THE FAMILY AND THE MISSING ID — asserted on the FACTS, for
+    # the reason the endpoint cells are: one that reads only "it threw" passes just as happily on a
+    # refusal that names nothing, and here the FAMILY is what tells a caller which of the two
+    # records to open.
+    test-the-refusal-names-the-layer-the-family-and-the-missing-decls-id = {
+      expr = contribute.undeclaredContentKeys [ ghostDecl ];
+      expected = [
+        {
+          contributor = "contentDeclared";
+          family = "decls";
+          id = mkId "host" "ghost";
+        }
+      ];
+    };
+    test-the-refusal-names-the-types-family-the-same-way = {
+      expr = contribute.undeclaredContentKeys [ phantomType ];
+      expected = [
+        {
+          contributor = "contentDeclared";
+          family = "types";
+          id = mkId "host" "phantom";
+        }
+      ];
+    };
+
+    # ★ THE MEASURED SHAPE THIS HALF CLOSES, asserted as the ASSEMBLY rather than as facts because
+    # what was wrong was the assembly WIDENING: this contribution evaluated green and its
+    # `nodeOrder` was `["host:a", "host:GHOST", "host:PHANTOM"]` — two nodes nobody declared,
+    # admitted through the front door on a green run.
+    test-content-borne-ghost-nodes-no-longer-reach-the-assembly = {
+      expr = throws (assemble {
+        contributions = [ contentBorneGhosts ];
+      });
+      expected = true;
+    };
+
+    # ── CROSS-CONTRIBUTION CONTENT IS LEGAL: the union is GLOBAL on this half too ──
+    test-a-layer-may-supply-content-for-what-another-layer-declared = {
+      expr = throws (union {
+        contributions = [
+          memberOwner
+          contentSupplier
+        ];
+      });
+      expected = false;
+    };
+    # And that legality is not an artefact of the declaring layer coming first.
+    test-the-cross-contribution-content-holds-in-either-order = {
+      expr = throws (union {
+        contributions = [
+          contentSupplier
+          memberOwner
+        ];
+      });
+      expected = false;
+    };
+    # ARMED: the supplier ALONE is refused, so the two cells above are not passing on a check that
+    # never looks at a content key.
+    test-seed-the-content-supplier-alone-is-refused = {
+      expr = throws (union {
+        contributions = [ contentSupplier ];
+      });
+      expected = true;
+    };
+
+    # ── THE CONTENT-KEY REFUSAL DOES NOT RIDE `strict` EITHER ──
+    # Same ground as the endpoint half: `strict` governs when the SUBSTRATE validates containment,
+    # and a soundness refusal an evaluation-order knob can switch off is the silence it exists to
+    # close.
+    test-strict-false-does-not-disable-the-content-key-refusal = {
+      expr = throws (assemble {
+        contributions = [ ghostDecl ];
+        strict = false;
+      });
+      expected = true;
+    };
+    # CONTROL: `strict = false` assembles the same contribution's DECLARED content, so the cell
+    # above is not passing on a knob that refuses everything carrying content.
+    test-control-strict-false-assembles-declared-content = {
+      expr =
+        (assemble {
+          contributions = [ contentDeclared ];
+          strict = false;
+        }).nodeOrder;
+      expected = [ (mkId "host" "a") ];
+    };
+
+    # ★ AND IT IS NOT A PROPERTY OF WHICH KEY A CALLER READS — the mirror of the endpoint cell that
+    # reads `decls`. This one reads `parentGraph`, the half the offending entry does not appear in
+    # at all, so a guard bound to the content keys alone would let it through.
+    test-reading-only-the-shape-half-is-refused-for-a-content-key-too = {
+      expr = throws (union { contributions = [ ghostDecl ]; }).parentGraph;
+      expected = true;
+    };
+    # CONTROL: the same read on a declared union answers rather than throwing.
+    test-control-reading-the-shape-half-of-a-declared-union-passes = {
+      expr = throws (union { contributions = [ contentDeclared ]; }).parentGraph;
+      expected = false;
+    };
+    # CONTROL against over-refusal on the suite's own working pair, whose `decls` and `types` are
+    # themselves cross-contribution: no undeclared content keys at all.
+    test-control-a-clean-assembly-has-no-undeclared-content-keys = {
+      expr = contribute.undeclaredContentKeys [
         base
         override
       ];
