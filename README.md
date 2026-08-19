@@ -128,8 +128,20 @@ discriminate this name from the rival it was run against. Contract-naming carrie
   are carried as one isolated vertex per id, overlaid — so the *same* commutative, associative,
   idempotent monoid the rest of the shape half rests on supplies the union, and no ordering rule is
   owed: two layers declaring one id declare one member, and which declared it first is not
-  observable. A declared id that no relation contains is a root. **It is carried, not validated:**
-  nothing here relates the declared members to the ids the edge graphs mention, in either direction.
+  observable. A declared id that no relation contains is a root.
+- **An edge endpoint no layer declared is REFUSED, by name.** A node an edge merely *mentions* is
+  not thereby a member, and the difference is invisible downstream: the substrate's graph unions
+  both endpoints of every edge into its node set by construction, so an edge naming an id nobody
+  declared **invents** that node and the assembly widens with nothing said. The check ranges over
+  every edge family a contribution carries — `parentGraph`, `importGraph` and every `edgeGraphs`
+  label — and reads **both** endpoints, because an edge *from* an undeclared id invents it by the
+  identical construction that an edge *to* one does. `vertices` is the only thing that declares: an
+  id a graph carries as a vertex is presence, not declaration, and reading it as a declaration would
+  make the check agree with every edge it exists to refuse. The declared member union is **global**,
+  so one layer may relate what another declared, while the diagnostic names the layer whose
+  contribution carried the offending edge, the edge label, and the missing id. It runs at the union
+  boundary **unconditionally** — it does not ride the substrate's `strict` knob, because a soundness
+  refusal an evaluation-order knob can switch off is the silence it exists to close.
 - **The identifier convention is addressing, not disambiguation.** One spelling for one node, so
   that two layers naming the same thing *land on it*. Node-identifier collision is not the failure
   mode: identity is content-independent, and co-contribution is what the ordered fold is for. An
@@ -170,7 +182,9 @@ genAssemble.assemble {
   contributions = [
     {
       name = "hosts"; # required: every refusal this protocol makes is stated in it
-      vertices = [ "host:web1" "host:db1" ]; # the members this layer declares
+      # The members this layer declares. Every id an edge below names must be declared HERE or by
+      # another contribution — an undeclared endpoint is refused, naming this layer and the id.
+      vertices = [ "host:web1" "host:db1" "env:prod" ];
       parentGraph = scope.edge "host:web1" "env:prod";
       decls."host:web1" = { tier = "base"; };
     }
