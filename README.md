@@ -129,20 +129,29 @@ discriminate this name from the rival it was run against. Contract-naming carrie
   idempotent monoid the rest of the shape half rests on supplies the union, and no ordering rule is
   owed: two layers declaring one id declare one member, and which declared it first is not
   observable. A declared id that no relation contains is a root.
-- **An edge endpoint no layer declared is REFUSED, by name.** A node an edge merely *mentions* is
-  not thereby a member, and the difference is invisible downstream: the substrate's graph unions
-  both endpoints of every edge into its node set by construction, so an edge naming an id nobody
-  declared **invents** that node and the assembly widens with nothing said. The check ranges over
-  every edge family a contribution carries — `parentGraph`, `importGraph` and every `edgeGraphs`
-  label — and reads **both** endpoints, because an edge *from* an undeclared id invents it by the
-  identical construction that an edge *to* one does. `vertices` is the only thing that declares a node
-  a relation may name — the check covers the relation channels, and `decls`/`types` content keys sit
-  outside it: an id a graph carries as a vertex is presence, not declaration, and reading it as a
-  declaration would make the check agree with every edge it exists to refuse. The declared member union is **global**,
-  so one layer may relate what another declared, while the diagnostic names the layer whose
-  contribution carried the offending edge, the edge label, and the missing id. It runs at the union
-  boundary **unconditionally** — it does not ride the substrate's `strict` knob, because a soundness
-  refusal an evaluation-order knob can switch off is the silence it exists to close.
+- **An id no layer declared is REFUSED, by name.** A node a contribution merely *mentions* is not
+  thereby a member, and the difference is invisible downstream: the constructor's node set absorbs
+  an edge endpoint and a content key alike, so naming an id nobody declared **invents** that node
+  and the assembly widens with nothing said. The check ranges over every id a contribution names.
+  Over the **relations**, that is every edge family it carries — `parentGraph`, `importGraph` and
+  every `edgeGraphs` label — reading **both** endpoints, because an edge *from* an undeclared id
+  invents it by the identical construction that an edge *to* one does. Over the **content**, it is
+  every key of `decls` and `types`: the constructor derives its node set from the content records as
+  well as from the graph, so a `decls` entry for an undeclared id reaches the assembly as a node, and
+  covering only the relation channels would close one door onto a room with two. `vertices` is the
+  only thing that *declares*: an id a graph carries as a vertex is presence, not declaration, and
+  reading it as a declaration would make the check agree with every edge it exists to refuse. The
+  declared member union is **global**, so one layer may relate, or say something about, what another
+  declared, while the diagnostic names the layer whose contribution carried it, the edge label or the
+  content family, and the missing id. It runs at the union boundary **unconditionally** — it does not
+  ride the substrate's `strict` knob, because a soundness refusal an evaluation-order knob can switch
+  off is the silence it exists to close.
+- **What that refusal does _not_ cover, stated because an unqualified safety claim reads as "no
+  oracle needed":** an **isolated vertex** carried inside a contributed graph. The scan ranges over a
+  graph's _edges_, so a lone vertex overlaid into `parentGraph` or `importGraph` enters the node set
+  with no layer declaring it and nothing said. Measured green. Whether to close it is a live design
+  question rather than an oversight: `vertices` and a graph's vertex set would then be two spellings
+  of one declaration, which is exactly the collapse the bullet above refuses.
 - **The identifier convention is addressing, not disambiguation.** One spelling for one node, so
   that two layers naming the same thing *land on it*. Node-identifier collision is not the failure
   mode: identity is content-independent, and co-contribution is what the ordered fold is for. An
