@@ -7,6 +7,8 @@
   genAssemble,
   genAssembleUnmet,
   scope,
+  prelude,
+  algebra,
   ...
 }:
 let
@@ -16,6 +18,11 @@ let
     mkId
     structuralDecls
     ;
+
+  # The protocol module itself, for the collision FACTS the published refusal renders. Read here
+  # rather than through the surface because they are not a construct a consumer needs a name for —
+  # what a consumer receives is the diagnostic, and this is what that diagnostic is made of.
+  contribute = import ../../lib/contribute.nix { inherit prelude scope algebra; };
 
   # Two layers, each contributing shape, a labelled dimension and content for the SAME node — which
   # is the case the protocol exists for: co-contribution settled by position, not refused.
@@ -52,6 +59,17 @@ let
         tier = "override";
       };
     };
+  };
+
+  # Every key the record carries, in one contribution. This is the positive control the totality
+  # refusals below are read against: a constructor that refused everything would pass each of them.
+  total = {
+    name = "total";
+    parentGraph = scope.vertex (mkId "host" "solo");
+    importGraph = scope.empty;
+    edgeGraphs = [ ];
+    decls = { };
+    types = { };
   };
 
   merged = union {
@@ -180,6 +198,83 @@ in
           }).edgeGraphs;
       expected = 2;
     };
+    # ★ AND THE COLLISION DIAGNOSTIC CARRIES BOTH CONTRIBUTORS — asserted on the NAMES, because a
+    # cell that reads only "it threw" passes just as happily on a refusal that names nothing, which
+    # is a state this suite could not otherwise tell apart from the one the design claims.
+    test-a-label-collision-names-both-contributors = {
+      expr = contribute.collisions [
+        base
+        (override // { inherit (base) edgeGraphs; })
+      ];
+      expected = [
+        {
+          label = "M";
+          contributors = [
+            "base"
+            "override"
+          ];
+        }
+      ];
+    };
+    # CONTROL: distinct labels are not a collision, so the facts above are not a function that
+    # reports one for every pair.
+    test-control-distinct-labels-collide-with-nothing = {
+      expr = contribute.collisions [
+        base
+        override
+      ];
+      expected = [ ];
+    };
+
+    # ── THE RECORD IS TOTAL: a key the protocol does not carry is REFUSED, never dropped ──
+    # Three surface forms, because the class is "a key this protocol does not carry" and a cell that
+    # only ever sees one spelling of it is a cell about that spelling. A dropped key is the silent
+    # failure this library exists to not have: the layer's content vanishes and the run stays green.
+    test-the-vertices-key-is-refused-rather-than-dropped = {
+      expr = throws (union {
+        contributions = [ (base // { vertices = [ (mkId "host" "solo") ]; }) ];
+      });
+      expected = true;
+    };
+    test-an-unheard-of-key-is-refused-rather-than-dropped = {
+      expr = throws (union {
+        contributions = [ (base // { attrs = { }; }) ];
+      });
+      expected = true;
+    };
+    test-a-one-character-misspelling-of-a-known-key-is-refused = {
+      expr = throws (union {
+        contributions = [
+          (builtins.removeAttrs base [ "decls" ] // { decl = base.decls; })
+        ];
+      });
+      expected = true;
+    };
+    # CONTROL: a contribution carrying EVERY key the record has passes, in the same run and through
+    # the same predicate. Without it the three refusals above are equally consistent with a
+    # constructor that refuses whatever it is handed.
+    test-control-a-contribution-carrying-every-key-passes = {
+      expr = throws (union {
+        contributions = [ total ];
+      });
+      expected = false;
+    };
+
+    # ── THE NAME IS REQUIRED, because every refusal this protocol makes is stated in it ──
+    test-a-contribution-without-a-name-is-refused = {
+      expr = throws (union {
+        contributions = [ (builtins.removeAttrs base [ "name" ]) ];
+      });
+      expected = true;
+    };
+    # An EMPTY name is refused too, and not defaulted: it is writable, it reads like a declaration,
+    # and it names nothing — so it degrades the naming property exactly as an absent one does.
+    test-an-empty-name-is-refused = {
+      expr = throws (union {
+        contributions = [ (base // { name = ""; }) ];
+      });
+      expected = true;
+    };
 
     # ── The identifier convention addresses rather than disambiguates ──
     # Two layers naming one node land on it: one node, contributions from both.
@@ -193,11 +288,30 @@ in
       expr = throws (genAssemble.parseId "web1");
       expected = true;
     };
+    # An empty half is a plausible-looking half: the separator is there and the record comes back
+    # well-formed, addressing nothing. Both sides, because they fail through different halves.
+    test-parseId-refuses-an-empty-type = {
+      expr = throws (genAssemble.parseId ":web1");
+      expected = true;
+    };
+    test-parseId-refuses-an-empty-name = {
+      expr = throws (genAssemble.parseId "host:");
+      expected = true;
+    };
     test-control-parseId-reads-a-conventional-id = {
       expr = genAssemble.parseId (mkId "host" "web1");
       expected = {
         type = "host";
         name = "web1";
+      };
+    };
+    # CONTROL against over-refusal: a name that CONTAINS the separator is not a degenerate half, and
+    # only the first field is the type.
+    test-control-parseId-keeps-a-separator-inside-the-name = {
+      expr = genAssemble.parseId (mkId "host" "web1:extra");
+      expected = {
+        type = "host";
+        name = "web1:extra";
       };
     };
 

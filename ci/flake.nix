@@ -48,6 +48,7 @@
           genAssembleUnmet
           scope
           prelude
+          algebra
           ;
       };
     };
