@@ -233,6 +233,38 @@ let
     };
   };
 
+  # ── FIXTURES FOR THE ISOLATED-VERTEX HALF OF THE MEMBERSHIP REFUSAL ──
+  # A STOWAWAY is a lone vertex overlaid into a contributed graph that no edge touches and no layer
+  # declares. It is the third channel into the node set: the substrate absorbs a graph's vertices
+  # whether or not any edge holds of them, so a stowaway invents a node exactly as an undeclared
+  # endpoint or content key does. One per graph family, because the class is "a graph's vertex set"
+  # and a suite that seeds one family is a suite about that family.
+  stowawayParent = {
+    name = "stowawayParent";
+    vertices = [ (mkId "host" "a") ];
+    parentGraph = scope.overlays [
+      (scope.vertex (mkId "host" "a"))
+      (scope.vertex (mkId "host" "stowaway"))
+    ];
+  };
+  stowawayImport = {
+    name = "stowawayImport";
+    vertices = [ (mkId "host" "a") ];
+    parentGraph = scope.vertex (mkId "host" "a");
+    importGraph = scope.vertex (mkId "profile" "stowaway");
+  };
+  stowawayLabelled = {
+    name = "stowawayLabelled";
+    vertices = [ (mkId "host" "a") ];
+    parentGraph = scope.vertex (mkId "host" "a");
+    edgeGraphs = [
+      {
+        label = "S";
+        graph = scope.vertex (mkId "group" "stowaway");
+      }
+    ];
+  };
+
   merged = union {
     contributions = [
       base
@@ -812,6 +844,164 @@ in
       expr = contribute.undeclaredContentKeys [
         base
         override
+      ];
+      expected = [ ];
+    };
+
+    # ── THE THIRD CHANNEL: an ISOLATED GRAPH VERTEX no layer declared is REFUSED ──
+    # The substrate absorbs a graph's vertices whether or not any edge holds of them, so a lone
+    # vertex overlaid into a contributed graph invents a node exactly as an undeclared endpoint or
+    # content key does. Asserted over all three graph families, because the class is "a contributed
+    # graph's vertex set" and the families are three different carriers of it.
+    test-an-isolated-vertex-in-the-containment-graph-is-refused = {
+      expr = throws (union {
+        contributions = [ stowawayParent ];
+      });
+      expected = true;
+    };
+    test-an-isolated-vertex-in-the-import-graph-is-refused = {
+      expr = throws (union {
+        contributions = [ stowawayImport ];
+      });
+      expected = true;
+    };
+    test-an-isolated-vertex-under-a-custom-label-is-refused = {
+      expr = throws (union {
+        contributions = [ stowawayLabelled ];
+      });
+      expected = true;
+    };
+
+    # ★ THE DIAGNOSTIC NAMES THE LAYER, THE GRAPH IT ARRIVED IN AND THE MISSING ID — asserted on the
+    # FACTS for the reason the other two channels are, and over all three families so the LABEL each
+    # graph is named by is read too rather than three spellings of one cell.
+    test-the-refusal-names-the-layer-the-graph-and-the-isolated-id = {
+      expr = contribute.undeclaredGraphVertices [ stowawayParent ];
+      expected = [
+        {
+          contributor = "stowawayParent";
+          label = "P";
+          id = mkId "host" "stowaway";
+        }
+      ];
+    };
+    test-the-refusal-names-the-import-graph-the-same-way = {
+      expr = contribute.undeclaredGraphVertices [ stowawayImport ];
+      expected = [
+        {
+          contributor = "stowawayImport";
+          label = "I";
+          id = mkId "profile" "stowaway";
+        }
+      ];
+    };
+    test-the-refusal-names-a-custom-labelled-graph-the-same-way = {
+      expr = contribute.undeclaredGraphVertices [ stowawayLabelled ];
+      expected = [
+        {
+          contributor = "stowawayLabelled";
+          label = "S";
+          id = mkId "group" "stowaway";
+        }
+      ];
+    };
+
+    # ★ CHECKING THE VERTEX SET DOES NOT MAKE IT A DECLARATION, and this is the cell that says so:
+    # the SAME contribution with the same graph, the stowaway now declared, reads clean. So the
+    # refusal reads the DECLARATION and not the shape — `scope.vertex` stays a legitimate way to
+    # carry a root, provided some layer declares the id.
+    test-control-a-declared-isolated-vertex-passes = {
+      expr = contribute.undeclaredGraphVertices [
+        (
+          stowawayParent
+          // {
+            vertices = [
+              (mkId "host" "a")
+              (mkId "host" "stowaway")
+            ];
+          }
+        )
+      ];
+      expected = [ ];
+    };
+    # And the declaration may come from ANOTHER layer, because the union is global on this channel
+    # too — the same cross-contribution legality the other two channels carry.
+    test-control-a-stowaway-passes-once-another-layer-declares-it = {
+      expr = contribute.undeclaredGraphVertices [
+        stowawayParent
+        {
+          name = "hosts";
+          vertices = [ (mkId "host" "stowaway") ];
+        }
+      ];
+      expected = [ ];
+    };
+
+    # ★ THE TWO SHAPE CHANNELS PARTITION, and the subtraction that makes them do so is load-bearing
+    # rather than tidy: the substrate's `edge` puts BOTH endpoints into the graph's vertex set, so a
+    # vertex scan without it would report every undeclared endpoint a SECOND time, under a finding
+    # calling an id "isolated" that has an edge on it. The absence and its control are asserted in
+    # ONE cell so the absence cannot pass by the predicate being dead.
+    test-the-two-shape-channels-partition-an-undeclared-endpoint = {
+      expr = {
+        asIsolatedVertex = contribute.undeclaredGraphVertices [ missingTarget ];
+        asEndpoint = map (f: f.id) (contribute.undeclaredEndpoints [ missingTarget ]);
+      };
+      expected = {
+        asIsolatedVertex = [ ];
+        asEndpoint = [ (mkId "host" "b") ];
+      };
+    };
+
+    # ── THE ISOLATED-VERTEX REFUSAL DOES NOT RIDE `strict` EITHER ──
+    test-strict-false-does-not-disable-the-isolated-vertex-refusal = {
+      expr = throws (assemble {
+        contributions = [ stowawayParent ];
+        strict = false;
+      });
+      expected = true;
+    };
+    # CONTROL: `strict = false` assembles the same graph once the vertex is declared, so the cell
+    # above is not passing on a knob that refuses every lone vertex.
+    test-control-strict-false-assembles-a-declared-isolated-vertex = {
+      expr =
+        builtins.sort builtins.lessThan
+          (assemble {
+            contributions = [
+              (
+                stowawayParent
+                // {
+                  vertices = [
+                    (mkId "host" "a")
+                    (mkId "host" "stowaway")
+                  ];
+                }
+              )
+            ];
+            strict = false;
+          }).nodeOrder;
+      expected = [
+        (mkId "host" "a")
+        (mkId "host" "stowaway")
+      ];
+    };
+
+    # ★ AND IT IS NOT A PROPERTY OF WHICH KEY A CALLER READS. The cell reads `decls`, which a
+    # contribution carrying only a stowaway vertex does not populate at all.
+    test-reading-only-the-content-half-is-refused-for-a-stowaway-too = {
+      expr = throws (union { contributions = [ stowawayParent ]; }).decls;
+      expected = true;
+    };
+    # CONTROL against over-refusal, on the suite's own working pair PLUS `total` — whose
+    # `parentGraph` is a genuinely isolated `scope.vertex` over an id it declares. The working pair
+    # alone would not arm this cell: its graphs are all edges, so the endpoint subtraction empties
+    # the scan before the declaration is ever consulted, and a check that refused every declared
+    # lone vertex would still read clean here. `total` is what makes the absence load-bearing.
+    test-control-a-clean-assembly-has-no-undeclared-isolated-vertices = {
+      expr = contribute.undeclaredGraphVertices [
+        base
+        override
+        total
       ];
       expected = [ ];
     };

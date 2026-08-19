@@ -40,27 +40,32 @@
 # id, overlaid — so the declared member set across contributions is a SET UNION with no ordering
 # rule required.
 #
-# ★ AND `vertices` IS THE ONLY THING THAT DECLARES. EVERY ID A CONTRIBUTION NAMES — BOTH ENDPOINTS
-# OF EVERY EDGE IT CARRIES, AND EVERY KEY OF ITS `decls` AND `types` — IS CHECKED AGAINST THE
-# DECLARED MEMBER UNION AT THIS BOUNDARY, UNCONDITIONALLY. A node a contribution merely MENTIONS is
-# not thereby a member, and the difference is invisible downstream — the constructor's node set
-# absorbs an edge endpoint and a content key ALIKE, so an id nobody declared INVENTS that node and
-# the assembly widens with nothing said. That is why a graph-borne vertex does not declare either:
-# the same union puts it in the node set anyway, so reading it as a declaration would make this
-# check agree with every edge it was written to refuse.
+# ★ AND `vertices` IS THE ONLY THING THAT SAYS WHICH NODES EXIST. EVERY ID A CONTRIBUTION NAMES IS
+# CHECKED AGAINST THE DECLARED MEMBER UNION AT THIS BOUNDARY, UNCONDITIONALLY, OVER ALL THREE
+# CHANNELS BY WHICH AN ID CAN REACH THE ASSEMBLY:
 #
-# ★ CONTENT KEYS ARE CHECKED ON THE MEASURED MECHANISM AND NOT BY ANALOGY WITH EDGES. A `decls` or
-# `types` entry for an id no layer declared reaches the assembly AS A NODE — the constructor derives
-# its node set from the content records as well as from the graph — so the two entrances are one
-# defect, and covering only the relation channels would have closed one door onto a room with two.
+#   EDGE ENDPOINTS   — both sides of every edge of every family (`parentGraph` under `P`,
+#                      `importGraph` under `I`, and each `edgeGraphs` label).
+#   GRAPH VERTICES   — the ISOLATED members of every contributed graph's vertex set, meaning those
+#                      no edge touches; the endpoints are the channel above and are subtracted, so
+#                      the two partition instead of double-reporting one id.
+#   CONTENT KEYS     — every key of `decls` and of `types`.
 #
-# ★ THE ONE CHANNEL THIS DOES NOT CLOSE, STATED HERE BECAUSE AN UNQUALIFIED SAFETY CLAIM READS AS
-# "NO ORACLE NEEDED": an ISOLATED VERTEX carried inside a contributed GRAPH. The scan ranges over a
-# graph's EDGES, so a lone vertex overlaid into `parentGraph` or `importGraph` enters the node set
-# with no layer declaring it and nothing said — measured green at this landing. Whether to close it
-# is a live design question rather than a reading this construction may take on its own: `vertices`
-# and a graph's vertex set would then be two spellings of one declaration, which is the collapse the
-# paragraph above refuses.
+# Those three exhaust what the constructor reads to build its node set, which is what makes the
+# universal above a PROPERTY OF THIS BOUNDARY rather than an aspiration. Each is armed in CI against
+# a seed that fires it alone. A node a contribution merely MENTIONS is not thereby a member, and the
+# difference is invisible downstream — an id nobody declared INVENTS that node and the assembly
+# widens with nothing said. All three were measured doing exactly that, on green evaluations, before
+# each was closed; none is an argument from analogy with the others.
+#
+# ★ A MENTION IS NOT A DECLARATION, AND CHECKING THE VERTEX SET DOES NOT MAKE IT ONE. The two
+# readings are what let both halves hold at once. To DECLARE is to say a node is a member, and
+# `vertices` remains the only key that does it: reading a graph's vertex set as a declaration would
+# make this check agree with every edge it was written to refuse, since the substrate's `edge` puts
+# both of its endpoints into that vertex set. Reading it instead as a MENTION THAT MUST BE BACKED BY
+# A DECLARATION closes the channel and leaves the declaring key sole. The consequence is taken with
+# eyes open: `parentGraph = scope.vertex id` for an id no layer declared is a REFUSAL, and the fix
+# is to declare the id in some contribution's `vertices`.
 {
   prelude,
   scope,
@@ -221,6 +226,74 @@ let
       ) cs
     );
 
+  # EVERY ID THAT APPEARS AS AN EDGE ENDPOINT ANYWHERE IN THE LIST, indexed. The endpoint scan above
+  # ranges over exactly this set, so subtracting it below is what makes the two shape scans a
+  # PARTITION of the undeclared ids rather than two overlapping reports of the same one.
+  #
+  # ★ THIS SUBTRACTION IS LOAD-BEARING AND NOT A TIDINESS MEASURE. The substrate's `edge` puts BOTH
+  # of its endpoints into the graph's VERTEX SET as well as into its edge list — measured — so a
+  # vertex-set scan without it would re-report every undeclared endpoint a second time, under a
+  # finding that says "isolated" about an id that is not.
+  endpointIndex =
+    cs:
+    builtins.listToAttrs (
+      prelude.concatMap (
+        c:
+        prelude.concatMap (
+          r:
+          prelude.concatMap (e: [
+            {
+              name = e.from;
+              value = true;
+            }
+            {
+              name = e.to;
+              value = true;
+            }
+          ]) r.graph.edges
+        ) (relationsOf c)
+      ) cs
+    );
+
+  # THE UNDECLARED ISOLATED-VERTEX FACTS AS DATA — the third and last channel by which an id can
+  # reach the assembly, closed on the same construction and against the same global index.
+  #
+  # ★ A GRAPH'S VERTEX SET IS A CHANNEL IN ITS OWN RIGHT. The substrate's node set absorbs a graph's
+  # vertices whether or not any edge touches them, so a lone `vertex` overlaid into a contributed
+  # graph invents a node exactly as an undeclared endpoint or an undeclared content key does. It was
+  # measured doing so, on a green evaluation, which is why this is a refusal and not a note.
+  #
+  # ★ AND REFUSING IT DOES NOT MAKE A GRAPH'S VERTEX SET A SECOND DECLARATION — that is the reading
+  # this deliberately does not take, and the distinction is the whole of why both can hold. To
+  # DECLARE is to say a node is a member; the vertex set says only that an id was mentioned. Reading
+  # a mention as a declaration would make the check agree with every edge it exists to refuse, since
+  # the same union puts every mentioned endpoint into the vertex set. Reading it as a MENTION THAT
+  # MUST BE BACKED BY A DECLARATION keeps `vertices` the sole declaring key and closes the channel.
+  # The consequence is taken with eyes open: `parentGraph = scope.vertex id` for an id no layer
+  # declared is now a refusal, and the fix is to declare the id.
+  undeclaredGraphVerticesOf =
+    cs:
+    let
+      declared = declaredIndex cs;
+      endpoints = endpointIndex cs;
+    in
+    prelude.unique (
+      prelude.concatMap (
+        c:
+        prelude.concatMap (
+          r:
+          prelude.concatMap (
+            id:
+            prelude.optional (!(builtins.hasAttr id declared) && !(builtins.hasAttr id endpoints)) {
+              contributor = c.name;
+              inherit (r) label;
+              inherit id;
+            }
+          ) r.graph.vertices
+        ) (relationsOf c)
+      ) cs
+    );
+
   # THE CONTENT RECORDS, under the family name the diagnostic has to name them by. They are
   # enumerated rather than inlined for the reason `relationsOf` is: "the id is not declared" is not
   # actionable without the key a caller has to open to fix it, and a family read off a list is a
@@ -289,6 +362,9 @@ let
   undeclaredContentKeys =
     contributions: undeclaredContentKeysOf (prelude.imap0 normalise contributions);
 
+  undeclaredGraphVertices =
+    contributions: undeclaredGraphVerticesOf (prelude.imap0 normalise contributions);
+
   union =
     {
       contributions,
@@ -330,9 +406,13 @@ let
           map (g: builtins.removeAttrs g [ "contributor" ]) labelled;
 
       # ── THE DECLARED-MEMBERSHIP REFUSAL, at the protocol boundary ──
-      # An id a contribution names that is not in the declared member union is refused by name: an
-      # EDGE ENDPOINT, naming the contributing layer, the edge label and the missing id; and a
-      # `decls` or `types` KEY, naming the contributing layer, the family and the missing id.
+      # An id a contribution names that is not in the declared member union is refused by name, over
+      # all THREE channels by which an id can reach the assembly: an EDGE ENDPOINT, naming the
+      # contributing layer, the edge label and the missing id; an ISOLATED GRAPH VERTEX, naming the
+      # layer, the graph it arrived in and the missing id; and a `decls` or `types` KEY, naming the
+      # layer, the family and the missing id. Between them they exhaust what the constructor reads
+      # to build its node set, which is what turns "`vertices` is the only thing that says which
+      # nodes exist" from an aspiration into a property of this boundary.
       #
       # ★ IT IS UNCONDITIONAL, AND IT IS UNCONDITIONAL BY CONSTRUCTION RATHER THAN BY DEFAULT. The
       # substrate's `strict` knob governs when the SUBSTRATE validates the containment relation;
@@ -346,17 +426,24 @@ let
       # would be a property of which attribute a caller happens to read first, and a caller reading
       # only `decls` would receive a union built over edges naming nodes nobody declared.
       undeclared = undeclaredEndpointsOf cs;
+      undeclaredVertices = undeclaredGraphVerticesOf cs;
       undeclaredContent = undeclaredContentKeysOf cs;
 
-      # THE TWO CLASSES RENDER INTO ONE REFUSAL because they are one property with two entrances.
-      # Both name an id no layer declared, both put that id into the assembly by the same union, and
-      # both are discharged by the same two moves. Splitting them into two throws would make WHICH
-      # diagnostic a caller receives a fact about which entrance their contribution used first.
+      # THE THREE CLASSES RENDER INTO ONE REFUSAL because they are one property with three
+      # entrances. Each names an id no layer declared, each puts that id into the assembly by the
+      # same union, and each is discharged by the same two moves. Splitting them into three throws
+      # would make WHICH diagnostic a caller receives a fact about which entrance their contribution
+      # used first. The two shape channels PARTITION rather than overlap — the vertex scan subtracts
+      # every edge endpoint — so no id is reported twice under two descriptions of itself.
       findings =
         map (
           f:
           "the contribution `${f.contributor}` carries an edge under the label `${f.label}` whose `${f.side}` endpoint `${f.id}` is not a declared member"
         ) undeclared
+        ++ map (
+          f:
+          "the contribution `${f.contributor}` carries an isolated vertex `${f.id}` in the graph under the label `${f.label}`, which is not a declared member"
+        ) undeclaredVertices
         ++ map (
           f:
           "the contribution `${f.contributor}` carries a `${f.family}` entry for `${f.id}`, which is not a declared member"
@@ -367,7 +454,7 @@ let
         if findings == [ ] then
           result
         else
-          throw "gen-assemble: ${prelude.concatStringsSep "; " findings}. Membership is DECLARED: a contribution's `vertices` is the only thing that DECLARES a node, and every id a contribution names — an edge endpoint, or a `decls`/`types` key — is checked against what every layer declared, because the node set absorbs them alike. So an id no layer declared is a node the contribution invents, admitted with nothing said. Declare the id in some contribution's `vertices` — any layer's will do, since one layer may relate, or say something about, what another declared — or drop the edge or entry that names it.";
+          throw "gen-assemble: ${prelude.concatStringsSep "; " findings}. Membership is DECLARED: a contribution's `vertices` is the only thing that says which nodes exist, and every id a contribution names — an edge endpoint, a graph's isolated vertex, or a `decls`/`types` key — is checked against what every layer declared, because the node set absorbs them alike. So an id no layer declared is a node the contribution invents, admitted with nothing said. Declare the id in some contribution's `vertices` — any layer's will do, since one layer may relate, or say something about, what another declared — or drop the edge, vertex or entry that names it.";
 
       # SHAPE: commutative union. The result is a graph, and which layer went first is not
       # observable in the node set or the edge relations.
@@ -438,5 +525,6 @@ in
     collisions
     undeclaredEndpoints
     undeclaredContentKeys
+    undeclaredGraphVertices
     ;
 }
