@@ -38,8 +38,15 @@
 # ids that layer declares to be members of the assembly, whether or not any relation holds of them.
 # They combine by the same commutative union as every other piece of shape — one isolated vertex per
 # id, overlaid — so the declared member set across contributions is a SET UNION with no ordering
-# rule required. It is carried and NOT checked against the relations: this protocol does not relate
-# what was declared to what the edges mention, in either direction.
+# rule required.
+#
+# ★ AND `vertices` IS THE ONLY THING THAT DECLARES: EVERY EDGE ENDPOINT IS CHECKED AGAINST THE
+# DECLARED MEMBER UNION AT THIS BOUNDARY, UNCONDITIONALLY. A node an edge merely MENTIONS is not
+# thereby a member, and the difference is invisible downstream — the substrate's graph unions both
+# endpoints of every edge into its node set by construction, so an edge naming an id nobody declared
+# INVENTS that node and the assembly widens with nothing said. That is why a graph-borne vertex does
+# not declare either: the same union puts it in the node set anyway, so reading it as a declaration
+# would make this check agree with every edge it was written to refuse.
 {
   prelude,
   scope,
@@ -123,10 +130,82 @@ let
   # layers declaring one id declare one member. A member no relation contains is a root, which is
   # already what an isolated vertex means to the constructor.
   #
-  # ★ THIS CARRIES MEMBERSHIP; IT DOES NOT CHECK IT. Nothing here relates the declared members to
-  # the ids the edge graphs mention, in either direction: an edge may name an id no contribution
-  # declared, and a declared id may be mentioned by no relation at all. Both are accepted.
+  # ★ THIS CARRIES MEMBERSHIP; THE REFUSAL BELOW CHECKS IT, AND THE TWO DIRECTIONS ARE NOT
+  # SYMMETRIC. A declared id that no relation mentions is fine — that is a root, and enumerating
+  # what a layer brings without relating it is what the key is for. An edge endpoint that no
+  # contribution declared is refused.
   declaredMembers = c: scope.overlays (map scope.vertex c.vertices);
+
+  # THE DECLARED MEMBER UNION AS A LOOKUP TABLE. Membership is a set question asked once per edge
+  # endpoint, so the union is indexed rather than searched: scanning a list per endpoint would make
+  # the check quadratic in the assembly, and the assemblies this protocol is sized for carry
+  # thousands of nodes and thousands of edges.
+  declaredIndex =
+    cs:
+    builtins.listToAttrs (
+      prelude.concatMap (
+        c:
+        map (id: {
+          name = id;
+          value = true;
+        }) c.vertices
+      ) cs
+    );
+
+  # EVERY RELATION A CONTRIBUTION CARRIES, UNDER THE LABEL THE DIAGNOSTIC HAS TO NAME IT BY.
+  # Containment and import travel as GRAPHS rather than as labels, but their edges are edges, and
+  # the refusal ranges over an edge rather than over a label space — so they are named here by the
+  # labels the substrate privileges them under, which is what a reader will find them by.
+  relationsOf =
+    c:
+    [
+      {
+        label = "P";
+        graph = c.parentGraph;
+      }
+      {
+        label = "I";
+        graph = c.importGraph;
+      }
+    ]
+    ++ c.edgeGraphs;
+
+  # THE UNDECLARED-ENDPOINT FACTS AS DATA, rendered by the refusal rather than computed inside it,
+  # on the same ground as the collision facts below.
+  #
+  # ★ BOTH ENDPOINTS ARE READ, and that is the honest total form rather than a widening of a narrow
+  # one. The hazard is usually stated of targets — an edge pointing at an id nobody declared invents
+  # it — but an edge FROM an undeclared id invents it by the identical construction, since the node
+  # set unions `from` and `to` alike. A check reading one side would leave the other silently open,
+  # which is the same defect entered from the other end.
+  #
+  # ★ THE UNION IS GLOBAL AND THE ATTRIBUTION IS PER CONTRIBUTION. A cross-contribution reference is
+  # legal — one layer declares a member, another relates it — so an endpoint is tested against what
+  # EVERY layer declared, while the finding names the layer whose contribution carried the offending
+  # edge, because that is the text that has to change.
+  undeclaredEndpointsOf =
+    cs:
+    let
+      declared = declaredIndex cs;
+      undeclaredSide =
+        c: r: side: id:
+        prelude.optional (!(builtins.hasAttr id declared)) {
+          contributor = c.name;
+          inherit (r) label;
+          inherit side id;
+        };
+    in
+    prelude.unique (
+      prelude.concatMap (
+        c:
+        prelude.concatMap (
+          r:
+          prelude.concatMap (
+            e: undeclaredSide c r "from" e.from ++ undeclaredSide c r "to" e.to
+          ) r.graph.edges
+        ) (relationsOf c)
+      ) cs
+    );
 
   # Each contributed edge graph tagged with the contribution that offered it. The tag is the only
   # reason a name travels past the constructor, and it is what makes the refusal below actionable.
@@ -151,6 +230,8 @@ let
   # refusal — the union itself composes the two halves above directly and normalises once.
   collisions =
     contributions: collisionsOf (labelledEdgeGraphs (prelude.imap0 normalise contributions));
+
+  undeclaredEndpoints = contributions: undeclaredEndpointsOf (prelude.imap0 normalise contributions);
 
   union =
     {
@@ -192,11 +273,40 @@ let
         else
           map (g: builtins.removeAttrs g [ "contributor" ]) labelled;
 
+      # ── THE DECLARED-MEMBERSHIP REFUSAL, at the protocol boundary ──
+      # An edge whose endpoint is not in the declared member union is refused by name, naming the
+      # contributing layer, the edge label and the missing id.
+      #
+      # ★ IT IS UNCONDITIONAL, AND IT IS UNCONDITIONAL BY CONSTRUCTION RATHER THAN BY DEFAULT. The
+      # substrate's `strict` knob governs when the SUBSTRATE validates the containment relation;
+      # this is the protocol's own boundary property, and a soundness refusal an evaluation-order
+      # knob could switch off is the silence the refusal exists to close. `strict` never reaches
+      # here — it is passed to the constructor, past this union — so there is no path by which it
+      # could. The price is one eager pass over the merged edges, the same shape and cost as the
+      # label check above.
+      #
+      # ★ AND THE GUARD BINDS THE WHOLE RESULT, not one key of it. Bound to `parentGraph` alone it
+      # would be a property of which attribute a caller happens to read first, and a caller reading
+      # only `decls` would receive a union built over edges naming nodes nobody declared.
+      undeclared = undeclaredEndpointsOf cs;
+
+      requireDeclaredMembership =
+        result:
+        if undeclared == [ ] then
+          result
+        else
+          throw "gen-assemble: ${
+            prelude.concatMapStringsSep "; " (
+              f:
+              "the contribution `${f.contributor}` carries an edge under the label `${f.label}` whose `${f.side}` endpoint `${f.id}` is not a declared member"
+            ) undeclared
+          }. Membership is DECLARED: a contribution's `vertices` is the only thing that says which nodes exist, and the substrate unions BOTH endpoints of every edge into its node set — so an endpoint no layer declared is a node the relation invents, admitted with nothing said. Declare the id in some contribution's `vertices` — any layer's will do, since one layer may relate what another declared — or drop the edge.";
+
       # SHAPE: commutative union. The result is a graph, and which layer went first is not
       # observable in the node set or the edge relations.
       shapeOf = f: scope.overlays (map f cs);
     in
-    {
+    requireDeclaredMembership {
       # The declared members ride with containment, because that is the relation whose graph carries
       # the assembly's membership: a declared id with no parent edge is a root, and a declared id
       # another layer contains is the same node reached by both declarations. They LEAD their own
@@ -259,5 +369,6 @@ in
     reserved
     normalise
     collisions
+    undeclaredEndpoints
     ;
 }

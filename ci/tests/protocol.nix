@@ -26,8 +26,20 @@ let
 
   # Two layers, each contributing shape, a labelled dimension and content for the SAME node — which
   # is the case the protocol exists for: co-contribution settled by position, not refused.
+  #
+  # ★ EACH DECLARES THE MEMBERS ITS OWN EDGES NAME, EXCEPT ONE, ON PURPOSE. `override` relates
+  # `host:db1` to `env:prod` while declaring only `host:db1` and `role:primary`: `env:prod` is
+  # BASE's declaration. That is the cross-contribution reference the membership refusal must not
+  # refuse — the union is global, so a layer may relate what another layer declared — and it is
+  # carried by the pair every other cell in this suite is built on rather than by a case of its own,
+  # so a refusal that lost that legality would take most of this file down with it.
   base = {
     name = "base";
+    vertices = [
+      (mkId "host" "web1")
+      (mkId "env" "prod")
+      (mkId "group" "www")
+    ];
     parentGraph = scope.edge (mkId "host" "web1") (mkId "env" "prod");
     edgeGraphs = [
       {
@@ -47,6 +59,10 @@ let
   };
   override = {
     name = "override";
+    vertices = [
+      (mkId "host" "db1")
+      (mkId "role" "primary")
+    ];
     parentGraph = scope.edge (mkId "host" "db1") (mkId "env" "prod");
     edgeGraphs = [
       {
@@ -86,6 +102,72 @@ let
     vertices = [
       (mkId "host" "shared")
       (mkId "host" "b")
+    ];
+  };
+
+  # ── FIXTURES FOR THE DECLARED-MEMBERSHIP REFUSAL ──
+  # One layer declaring both endpoints of the edge it carries. The refusal arms below are this
+  # contribution with one declaration removed, so each of them differs from a passing case in
+  # exactly the fact under test.
+  selfContained = {
+    name = "selfContained";
+    vertices = [
+      (mkId "host" "a")
+      (mkId "host" "b")
+    ];
+    parentGraph = scope.edge (mkId "host" "a") (mkId "host" "b");
+  };
+  # The same contribution with one endpoint's declaration dropped — one per side, because reading
+  # only `to` and reading both are two different libraries and a suite that seeds one side cannot
+  # tell them apart.
+  missingTarget = selfContained // {
+    vertices = [ (mkId "host" "a") ];
+  };
+  missingSource = selfContained // {
+    vertices = [ (mkId "host" "b") ];
+  };
+
+  # The cross-contribution reference: one layer declares a member, another relates it and declares
+  # only its own. Legal — the declared member union is GLOBAL, and per-contribution attribution is
+  # about which layer's text has to change, not about which layer's declarations count.
+  declarer = {
+    name = "declarer";
+    vertices = [ (mkId "env" "prod") ];
+  };
+  referrer = {
+    name = "referrer";
+    vertices = [ (mkId "host" "w") ];
+    parentGraph = scope.edge (mkId "host" "w") (mkId "env" "prod");
+  };
+
+  # One contribution per EDGE FAMILY, each missing the same declaration, so the refusal is read
+  # over all three relations a contribution can carry rather than over the containment one it
+  # happens to be written beside.
+  importer = {
+    name = "importer";
+    vertices = [ (mkId "host" "a") ];
+    importGraph = scope.edge (mkId "host" "a") (mkId "profile" "shared");
+  };
+  labeller = {
+    name = "labeller";
+    vertices = [ (mkId "host" "a") ];
+    edgeGraphs = [
+      {
+        label = "X";
+        graph = scope.edge (mkId "host" "a") (mkId "group" "ops");
+      }
+    ];
+  };
+
+  # A vertex the GRAPH carries and no `vertices` key declares. Presence, not declaration: the
+  # substrate's node set would absorb it either way, which is exactly why reading it as a
+  # declaration would make the refusal agree with every edge it exists to refuse.
+  graphBorne = {
+    name = "graphBorne";
+    vertices = [ (mkId "host" "b") ];
+    parentGraph = scope.overlays [
+      (scope.vertex (mkId "host" "a"))
+      (scope.edge (mkId "host" "a") (mkId "host" "b"))
     ];
   };
 
@@ -175,6 +257,9 @@ in
     };
 
     # ── The label refusals, both armed ──
+    # ★ THE SEEDED GRAPH IS BUILT FROM DECLARED IDS. An arbitrary `a`→`b` would be refused for
+    # UNDECLARED MEMBERSHIP before the label was ever read, and the cell — which asks only whether
+    # something threw — would go on passing while saying nothing about the reservation.
     test-a-reserved-label-is-refused = {
       expr = throws (union {
         contributions = [
@@ -185,7 +270,7 @@ in
               edgeGraphs = [
                 {
                   label = "P";
-                  graph = scope.edge "a" "b";
+                  graph = scope.edge (mkId "host" "db1") (mkId "env" "prod");
                 }
               ];
             }
@@ -313,6 +398,222 @@ in
         (mkId "host" "shared")
         (mkId "host" "b")
       ];
+    };
+
+    # ── THE DECLARED-MEMBERSHIP REFUSAL: an edge endpoint no layer declared is REFUSED ──
+    # A node an edge merely mentions is not a member. The substrate unions both endpoints of every
+    # edge into its node set, so an undeclared endpoint is a node the relation invents and the
+    # assembly widens with nothing said.
+    test-an-edge-to-an-undeclared-id-is-refused = {
+      expr = throws (union {
+        contributions = [ missingTarget ];
+      });
+      expected = true;
+    };
+    # ★ AND AN EDGE *FROM* AN UNDECLARED ID IS REFUSED THE SAME WAY. The hazard is usually stated of
+    # targets, but the node set unions `from` and `to` alike, so a check reading one side would
+    # leave the other silently open. This is the cell that tells the total form from the narrow one.
+    test-an-edge-from-an-undeclared-id-is-refused = {
+      expr = throws (union {
+        contributions = [ missingSource ];
+      });
+      expected = true;
+    };
+    # CONTROL: the same contribution declaring both endpoints passes, in the same run and through
+    # the same predicate. Without it the two refusals above are equally consistent with a union that
+    # refuses whatever carries an edge.
+    test-control-a-layer-declaring-both-endpoints-passes = {
+      expr = throws (union {
+        contributions = [ selfContained ];
+      });
+      expected = false;
+    };
+
+    # ★ THE DIAGNOSTIC NAMES THE LAYER, THE LABEL AND THE MISSING ID — asserted on the FACTS the
+    # refusal renders, because a cell that reads only "it threw" passes just as happily on a refusal
+    # that names nothing, and naming is the whole of what makes this one actionable. Both sides are
+    # asserted for the same reason the two cells above exist.
+    test-the-refusal-names-the-layer-the-label-and-the-missing-target = {
+      expr = contribute.undeclaredEndpoints [ missingTarget ];
+      expected = [
+        {
+          contributor = "selfContained";
+          label = "P";
+          side = "to";
+          id = mkId "host" "b";
+        }
+      ];
+    };
+    test-the-refusal-names-the-missing-source-the-same-way = {
+      expr = contribute.undeclaredEndpoints [ missingSource ];
+      expected = [
+        {
+          contributor = "selfContained";
+          label = "P";
+          side = "from";
+          id = mkId "host" "a";
+        }
+      ];
+    };
+
+    # ── THE REFUSAL RANGES OVER EVERY EDGE FAMILY A CONTRIBUTION CAN CARRY ──
+    # `parentGraph` and `importGraph` travel as graphs rather than as labels, but their edges are
+    # edges; asserted on the facts so the LABEL each family is named by is read too, which is what
+    # makes this coverage rather than three spellings of one cell.
+    test-an-undeclared-endpoint-in-the-import-relation-is-refused = {
+      expr = contribute.undeclaredEndpoints [ importer ];
+      expected = [
+        {
+          contributor = "importer";
+          label = "I";
+          side = "to";
+          id = mkId "profile" "shared";
+        }
+      ];
+    };
+    test-an-undeclared-endpoint-under-a-custom-label-is-refused = {
+      expr = contribute.undeclaredEndpoints [ labeller ];
+      expected = [
+        {
+          contributor = "labeller";
+          label = "X";
+          side = "to";
+          id = mkId "group" "ops";
+        }
+      ];
+    };
+    # CONTROLS for both families: the same edges with the missing id declared by another layer read
+    # clean, so neither cell above is a function that reports for every contribution.
+    test-control-the-import-relation-passes-once-its-target-is-declared = {
+      expr = contribute.undeclaredEndpoints [
+        importer
+        {
+          name = "profiles";
+          vertices = [ (mkId "profile" "shared") ];
+        }
+      ];
+      expected = [ ];
+    };
+    test-control-a-custom-label-passes-once-its-target-is-declared = {
+      expr = contribute.undeclaredEndpoints [
+        labeller
+        {
+          name = "groups";
+          vertices = [ (mkId "group" "ops") ];
+        }
+      ];
+      expected = [ ];
+    };
+
+    # ── A CROSS-CONTRIBUTION REFERENCE IS LEGAL: the union is GLOBAL ──
+    # One layer declares a member and another relates it. The refusal attributes to the layer that
+    # carried the edge, which is a different question from whose declaration satisfies it.
+    test-a-layer-may-relate-what-another-layer-declared = {
+      expr = throws (union {
+        contributions = [
+          declarer
+          referrer
+        ];
+      });
+      expected = false;
+    };
+    # And that legality is not an artefact of the declaring layer coming first.
+    test-the-cross-contribution-reference-holds-in-either-order = {
+      expr = throws (union {
+        contributions = [
+          referrer
+          declarer
+        ];
+      });
+      expected = false;
+    };
+    # ARMED: the referrer ALONE is refused, so the two cells above are not passing on a check that
+    # never looks at the endpoint.
+    test-seed-the-referrer-alone-is-refused = {
+      expr = throws (union {
+        contributions = [ referrer ];
+      });
+      expected = true;
+    };
+
+    # ── ONLY `vertices` DECLARES: A GRAPH-BORNE VERTEX IS PRESENCE, NOT DECLARATION ──
+    # A layer can put an id into a graph with `scope.vertex`, and the substrate's node set absorbs
+    # it — which is precisely why it cannot count as a declaration here: reading it as one would
+    # make the refusal agree with every edge it was written to refuse, since the union puts every
+    # mentioned endpoint into the vertex set by construction.
+    test-a-graph-borne-vertex-does-not-declare-membership = {
+      expr = contribute.undeclaredEndpoints [ graphBorne ];
+      expected = [
+        {
+          contributor = "graphBorne";
+          label = "P";
+          side = "from";
+          id = mkId "host" "a";
+        }
+      ];
+    };
+    # CONTROL: the same id moved into `vertices` declares it, over the same graph and in the same
+    # run — so the cell above reads the DECLARATION and not the id.
+    test-control-the-same-id-in-vertices-does-declare-it = {
+      expr = contribute.undeclaredEndpoints [
+        (
+          graphBorne
+          // {
+            vertices = [
+              (mkId "host" "a")
+              (mkId "host" "b")
+            ];
+          }
+        )
+      ];
+      expected = [ ];
+    };
+
+    # ── THE REFUSAL DOES NOT RIDE THE SUBSTRATE'S `strict` KNOB ──
+    # `strict` governs when the SUBSTRATE validates containment; this is the protocol's own boundary
+    # property, and a soundness refusal an evaluation-order knob could switch off is the silence the
+    # refusal exists to close.
+    test-strict-false-does-not-disable-the-membership-refusal = {
+      expr = throws (assemble {
+        contributions = [ missingTarget ];
+        strict = false;
+      });
+      expected = true;
+    };
+    # CONTROL: `strict = false` is a live setting that assembles, so the cell above is not passing
+    # on a knob that refuses everything.
+    test-control-strict-false-assembles-a-declared-contribution = {
+      expr =
+        (assemble {
+          contributions = [ selfContained ];
+          strict = false;
+        }).nodeOrder;
+      expected = [
+        (mkId "host" "a")
+        (mkId "host" "b")
+      ];
+    };
+    # ★ AND THE REFUSAL IS NOT A PROPERTY OF WHICH KEY A CALLER READS. Bound to `parentGraph` alone
+    # it would be one, and a consumer reading only the content half would receive a union built over
+    # edges naming nodes nobody declared. The cell reads `decls`, which the offending edge does not
+    # appear in at all.
+    test-reading-only-the-content-half-is-refused-too = {
+      expr = throws (union { contributions = [ missingTarget ]; }).decls;
+      expected = true;
+    };
+    # CONTROL: the same read on a declared union answers rather than throwing.
+    test-control-reading-the-content-half-of-a-declared-union-passes = {
+      expr = throws (union { contributions = [ selfContained ]; }).decls;
+      expected = false;
+    };
+    # CONTROL against over-refusal, on the suite's own working pair: a clean assembly — including
+    # its cross-contribution reference — has no undeclared endpoints at all.
+    test-control-a-clean-assembly-has-no-undeclared-endpoints = {
+      expr = contribute.undeclaredEndpoints [
+        base
+        override
+      ];
+      expected = [ ];
     };
 
     # ── THE RECORD IS TOTAL: a key the protocol does not carry is REFUSED, never dropped ──
