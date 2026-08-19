@@ -107,63 +107,79 @@ discriminate this name from the rival it was run against. Contract-naming carrie
 
 - **The toolkit never evaluates.** It composes the argument to the evaluator's call. Evaluation
   belongs to the sole evaluator, and limb 3 of the membership criterion is exactly this line.
+
 - **Shape and content obey opposite disciplines, and merging them is the design error.** Graph shape
   combines by a **commutative, associative, idempotent** union and must not depend on arrival order.
   Content arrives as an **ordered contribution list** and folds by **positional authority** — so two
   layers contributing content for one node are handed over in the declared order, not refused.
+
 - **The declared order is a parameter of the assembly.** Never derived from a global → class → host
   → user kind hierarchy, which would re-import the topology the agnosticism law forbids.
+
 - **A label collision IS refused, by name.** A label names a *dimension*, not a node, so two layers
   claiming one label is a genuine collision with no order semantics to resolve it. The refusal names
   both contributors — which is why a contribution's `name` is **required** rather than defaulted: a
   default turns "names both contributors" into a constant that names neither, and the property
   survives only if a contribution cannot exist without a name to be named by.
+
 - **The contribution record is TOTAL, and an unknown key is refused at the constructor.** A protocol
   that reads the keys it knows and drops the rest cannot enforce the shape it publishes: a mistyped
   field, or one an earlier revision named, produces an empty result and a green evaluation. That is
   a layer's content vanishing with nothing said. The refusal is a property of the *constructor*, not
   of a later scan, so the contribution the protocol cannot honour never forms.
+
 - **Membership is declared, and it combines by set union.** A contribution's `vertices` are the ids
   that layer declares to be members of the assembly, whether or not any relation holds of them. They
   are carried as one isolated vertex per id, overlaid — so the *same* commutative, associative,
   idempotent monoid the rest of the shape half rests on supplies the union, and no ordering rule is
   owed: two layers declaring one id declare one member, and which declared it first is not
   observable. A declared id that no relation contains is a root.
-- **An id no layer declared is REFUSED, by name.** A node a contribution merely *mentions* is not
-  thereby a member, and the difference is invisible downstream: the constructor's node set absorbs
-  an edge endpoint and a content key alike, so naming an id nobody declared **invents** that node
-  and the assembly widens with nothing said. The check ranges over every id a contribution names.
-  Over the **relations**, that is every edge family it carries — `parentGraph`, `importGraph` and
-  every `edgeGraphs` label — reading **both** endpoints, because an edge *from* an undeclared id
-  invents it by the identical construction that an edge *to* one does. Over the **content**, it is
-  every key of `decls` and `types`: the constructor derives its node set from the content records as
-  well as from the graph, so a `decls` entry for an undeclared id reaches the assembly as a node, and
-  covering only the relation channels would close one door onto a room with two. `vertices` is the
-  only thing that *declares*: an id a graph carries as a vertex is presence, not declaration, and
-  reading it as a declaration would make the check agree with every edge it exists to refuse. The
-  declared member union is **global**, so one layer may relate, or say something about, what another
-  declared, while the diagnostic names the layer whose contribution carried it, the edge label or the
-  content family, and the missing id. It runs at the union boundary **unconditionally** — it does not
-  ride the substrate's `strict` knob, because a soundness refusal an evaluation-order knob can switch
-  off is the silence it exists to close.
-- **What that refusal does _not_ cover, stated because an unqualified safety claim reads as "no
-  oracle needed":** an **isolated vertex** carried inside a contributed graph. The scan ranges over a
-  graph's _edges_, so a lone vertex overlaid into `parentGraph` or `importGraph` enters the node set
-  with no layer declaring it and nothing said. Measured green. Whether to close it is a live design
-  question rather than an oversight: `vertices` and a graph's vertex set would then be two spellings
-  of one declaration, which is exactly the collapse the bullet above refuses.
+
+- **An id no layer declared is REFUSED, by name — and `vertices` is the only thing that says which
+  nodes exist.** A node a contribution merely *mentions* is not thereby a member, and the difference
+  is invisible downstream: naming an id nobody declared **invents** that node and the assembly widens
+  with nothing said. The check ranges over every id a contribution names, across the **three channels
+  that exhaust what the constructor reads to build its node set** — which is what makes that universal
+  a property of this boundary rather than an aspiration. Each was measured admitting an undeclared
+  node on a green evaluation before it was closed, and **each is armed in CI by a seed that fires it
+  alone**:
+
+  - **Edge endpoints** — every edge family a contribution carries (`parentGraph`, `importGraph` and
+    every `edgeGraphs` label), reading **both** sides, because an edge *from* an undeclared id
+    invents it by the identical construction that an edge *to* one does.
+  - **Graph vertex sets** — the *isolated* members, meaning those no edge touches; the substrate
+    absorbs a graph's vertices whether or not any edge holds of them. Endpoints belong to the channel
+    above and are **subtracted**, so the two shape channels partition rather than report one id twice
+    — load-bearing, because the substrate's `edge` puts both of its endpoints into the vertex set too.
+  - **Content keys** — every key of `decls` and `types`; the constructor derives its node set from
+    the content records as well as from the graph.
+
+  Checking the vertex set does **not** make it a second declaration, and holding those two readings
+  apart is what lets both stand. To *declare* is to say a node is a member, and `vertices` remains
+  the only key that does it; a graph's vertex set is a *mention that must be backed by a declaration*.
+  Reading a mention as a declaration would make the check agree with every edge it exists to refuse.
+  The consequence is taken with eyes open: `parentGraph = scope.vertex id` for an undeclared id is a
+  refusal, and the fix is to declare the id. The declared member union is **global**, so one layer may
+  relate, or say something about, what another declared, while the diagnostic names the layer whose
+  contribution carried it, the edge label or graph or content family, and the missing id. It runs at
+  the union boundary **unconditionally** — it does not ride the substrate's `strict` knob, because a
+  soundness refusal an evaluation-order knob can switch off is the silence it exists to close.
+
 - **The identifier convention is addressing, not disambiguation.** One spelling for one node, so
   that two layers naming the same thing *land on it*. Node-identifier collision is not the failure
   mode: identity is content-independent, and co-contribution is what the ordered fold is for. An
   *empty half* is refused for the same reason a dropped key is: `":web1"` is a record that parses
   and addresses nothing.
+
 - **Refuse to evaluate while a precondition is unmet.** Two of the three substrate defects this
   library was specified against failed silently, and a library that builds green on a substrate that
   will serve stale declarations is the exact shape the gate exists to stop. All three have landed;
   the check stayed, because what it asserts is a *property of the pinned substrate* and not a
   version.
+
 - **Nothing is paid per call.** Every price the design carries is paid once, at assembly. That is
   what makes the toolkit cheaper than the hand-written sites it replaces rather than merely tidier.
+
 - **nixpkgs-lib-free.** `lib/` depends on no nixpkgs lib; nixpkgs enters only in `ci/`, as the test
   harness and formatter. `ci/tests/purity.nix` pins this as a checked property with its own positive
   control.
