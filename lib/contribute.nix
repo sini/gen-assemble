@@ -26,6 +26,13 @@
 # ★ THE ORDER IS A PARAMETER OF THE ASSEMBLY, never derived from a kind hierarchy. Deriving it from
 # global → class → host → user would re-import the topology the agnosticism law forbids. It must
 # also be invariant under presentation order; that obligation belongs to whoever builds the list.
+#
+# ★ THE CONTRIBUTION RECORD IS TOTAL, AND A KEY THE PROTOCOL DOES NOT CARRY IS REFUSED BY NAME. A
+# constructor that reads the keys it knows and drops the rest cannot enforce the shape it publishes:
+# the drop is silent, so a caller who mistypes a field, or who offers one the protocol does not
+# carry, gets an empty result and a green evaluation — a layer's content vanishing with nothing
+# said, entered through the front door. The refusal is therefore a property of the CONSTRUCTOR and
+# not of a later scan, so the bad intermediate never forms.
 {
   prelude,
   scope,
@@ -43,20 +50,85 @@ let
     }
   ];
 
-  # A contribution's own defaults. `parentGraph` and `importGraph` are GRAPHS, not labels — the
-  # relations they carry are the substrate's own, and a layer contributes to them by handing over a
-  # graph that the union overlays commutatively. The LABEL space is what the reservation below
-  # closes, and the two are different things: refusing the label `P` does not stop a layer
-  # contributing containment, it stops a layer smuggling containment in under a name the substrate
-  # privileges, where it would displace what another layer declared.
-  normalise = c: {
-    parentGraph = c.parentGraph or scope.empty;
-    importGraph = c.importGraph or scope.empty;
-    edgeGraphs = c.edgeGraphs or [ ];
-    decls = c.decls or { };
-    types = c.types or { };
-    name = c.name or "<unnamed contribution>";
-  };
+  # The whole of what a contribution may carry. `parentGraph` and `importGraph` are GRAPHS, not
+  # labels — the relations they carry are the substrate's own, and a layer contributes to them by
+  # handing over a graph that the union overlays commutatively. The LABEL space is what the
+  # reservation below closes, and the two are different things: refusing the label `P` does not stop
+  # a layer contributing containment, it stops a layer smuggling containment in under a name the
+  # substrate privileges, where it would displace what another layer declared.
+  #
+  # There is no `vertices` key and no need for one: an isolated vertex is a graph, and it travels as
+  # `parentGraph = scope.vertex id` like every other piece of shape. A second spelling for it would
+  # be a second way to say the same thing, and the constructor's own argument has none either.
+  contributionKeys = [
+    "name"
+    "parentGraph"
+    "importGraph"
+    "edgeGraphs"
+    "decls"
+    "types"
+  ];
+
+  # THE VALIDATING CONSTRUCTOR. It refuses rather than repairs, and it refuses at the point of
+  # construction, which is what keeps a contribution the protocol cannot honour from ever existing.
+  #
+  # ★ THE NAME IS REQUIRED, AND IT IS CHECKED FIRST BECAUSE EVERY OTHER REFUSAL IS STATED IN IT. A
+  # defaulted name silently converts "the refusal names both contributors" into a constant, so that
+  # property survives only if a contribution cannot exist without a name to be named by. An EMPTY
+  # name is refused on the same ground and not defaulted: it is writable, it reads like a
+  # declaration, and it names nothing — the naming property degrades exactly as it does when the
+  # field is absent, which is the shape a defaulted emptiness always has.
+  #
+  # ★ A CONTRIBUTION WITH NO NAME IS REFUSED BY ITS POSITION, a coordinate this protocol already
+  # carries rather than one invented for the diagnostic: the contribution list is ORDERED and
+  # content folds by positional authority, so a position is a fact about the assembly the caller
+  # declared and can act on.
+  normalise =
+    position: c:
+    let
+      offered = builtins.attrNames c;
+      unknown = prelude.filter (k: !(builtins.elem k contributionKeys)) offered;
+      at = "the contribution at index ${toString position} of the list";
+    in
+    if !(c ? name) then
+      throw "gen-assemble: ${at} offers no `name`, and the keys it does offer are ${builtins.toJSON offered}. Every refusal this protocol makes names the contributions it is about, because \"some layer\" is not actionable — so a contribution that cannot be named is refused before it can degrade one."
+    else if c.name == "" then
+      throw "gen-assemble: ${at} offers an EMPTY `name`. An empty name is writable and it names nothing, so it carries a refusal's actionability away exactly as an absent one does while reading like a declaration."
+    else if unknown != [ ] then
+      throw "gen-assemble: the contribution `${c.name}` offers ${builtins.toJSON unknown}, which this protocol does not carry. The record is total over ${builtins.toJSON contributionKeys}, and an unknown key is refused here rather than dropped, because a dropped key is a layer's content vanishing with nothing said. An isolated vertex travels as `parentGraph = scope.vertex \"<id>\"`, not as a key of its own."
+    else
+      {
+        inherit (c) name;
+        parentGraph = c.parentGraph or scope.empty;
+        importGraph = c.importGraph or scope.empty;
+        edgeGraphs = c.edgeGraphs or [ ];
+        decls = c.decls or { };
+        types = c.types or { };
+      };
+
+  # Each contributed edge graph tagged with the contribution that offered it. The tag is the only
+  # reason a name travels past the constructor, and it is what makes the refusal below actionable.
+  labelledEdgeGraphs =
+    cs: prelude.concatMap (c: map (g: g // { contributor = c.name; }) c.edgeGraphs) cs;
+
+  # THE COLLISION FACTS AS DATA: every label claimed by more than one contribution, with the
+  # contributions that claimed it. The refusal RENDERS this rather than computing it inline, so that
+  # a diagnostic naming both contributors is a property something can read rather than one a reader
+  # has to take on the message's word.
+  collisionsOf =
+    labelled:
+    let
+      byLabel = builtins.groupBy (g: g.label) labelled;
+    in
+    map (l: {
+      label = l;
+      contributors = map (g: g.contributor) byLabel.${l};
+    }) (prelude.filter (l: builtins.length byLabel.${l} > 1) (builtins.attrNames byLabel));
+
+  # The same facts read from a raw contribution list, for a caller that wants them ahead of the
+  # refusal — the union itself composes the two halves above directly and normalises once.
+  collisions =
+    contributions: collisionsOf (labelledEdgeGraphs (prelude.imap0 normalise contributions));
 
   union =
     {
@@ -64,21 +136,19 @@ let
       strategies ? { },
     }:
     let
-      cs = map normalise contributions;
+      cs = prelude.imap0 normalise contributions;
 
       # ── THE LABEL REFUSALS, at the protocol boundary ──
       # A label names a DIMENSION, not a node. Two layers claiming one label is a genuine collision
       # with no order semantics to resolve it — unlike `decls`, where the ordered fold IS the
       # resolution — so it throws, and it names both contributors because "some layer" is not
-      # actionable.
-      labelled = prelude.concatMap (c: map (g: g // { contributor = c.name; }) c.edgeGraphs) cs;
+      # actionable. The names it prints are the declared ones: the constructor above refuses a
+      # contribution that has none, so there is no default for this refusal to degenerate into.
+      labelled = labelledEdgeGraphs cs;
 
       offendingReserved = prelude.filter (r: prelude.any (g: g.label == r.label) labelled) reserved;
 
-      byLabel = builtins.groupBy (g: g.label) labelled;
-      collidingLabels = prelude.filter (l: builtins.length byLabel.${l} > 1) (builtins.attrNames byLabel);
-
-      contributorsOf = label: prelude.concatMapStringsSep ", " (g: g.contributor) byLabel.${label};
+      colliding = collisionsOf labelled;
 
       checkedLabels =
         if offendingReserved != [ ] then
@@ -90,11 +160,12 @@ let
               "`${r.label}` is ${r.relation}, and a contribution offering it under that name would displace what another layer declared — contribute those edges as the named graph instead."
             ) offendingReserved
           }"
-        else if collidingLabels != [ ] then
+        else if colliding != [ ] then
           throw "gen-assemble: ${
             prelude.concatMapStringsSep "; " (
-              l: "the label `${l}` is claimed by more than one contribution (${contributorsOf l})"
-            ) collidingLabels
+              c:
+              "the label `${c.label}` is claimed by more than one contribution (${prelude.concatStringsSep ", " c.contributors})"
+            ) colliding
           }. A label names a dimension rather than a node, so two claims on one label have no order semantics to settle them — merge the graphs into a single contribution, or give each its own label."
         else
           map (g: builtins.removeAttrs g [ "contributor" ]) labelled;
@@ -150,5 +221,10 @@ let
     );
 in
 {
-  inherit union reserved normalise;
+  inherit
+    union
+    reserved
+    normalise
+    collisions
+    ;
 }
