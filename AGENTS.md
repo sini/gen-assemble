@@ -6,21 +6,22 @@ The **shared framework toolkit**: the protocol a framework wraps around the one 
 node set from many layers' contributions — the union, the identifier convention, and the structural
 declarations the evaluator demands — held once here instead of rewritten by every framework.
 
-**This repository is a SHELL. The library exports nothing.** `lib/default.nix` is `{ }`, and
-`ci/tests/surface.nix` holds it there. The toolkit's constructs are specified and none is written,
-because each is blocked on a named, open substrate defect and **two of the three fail silently**. The
-specified construction refuses to evaluate by name while a precondition is unmet — and that refusal
-is content. An export landed ahead of it would be a construct with no armed refusal behind it, which
-is the one shape this design may not ship. **Read that as a fact about this repository, not as work
-waiting to be picked up by whoever opens it.**
+**The library exports NINE names**, listed under [Exports](#exports). `lib/default.nix` is a
+**function of the injected substrate** — `{ prelude, scope, algebra }` — returning the toolkit, so
+every command that reads the surface has to apply it first; the ones below do. The three substrate
+defects the constructs were blocked on have all landed, and **the refusal they motivated is still
+content**: `substratePreconditions` publishes the properties this library depends on, and an
+assembly over a substrate failing any of them refuses to evaluate by name rather than serving a
+wrong answer. Two of those three failed silently, which is why the refusal is a construct here and
+not a release note.
 
-**Not in the hub roster.** `gen/lib/mkGenLibs.nix` has no `assemble` entry and gen-assemble has no
-stratum. That is deliberate: the roster's stratum declaration is total and explicit by design — its
-own text says "a member with no entry here is a build error, never a member of an implicit residue
-bucket" — and the ruled timing is that **the entry lands with the first content migration, in the
-same batch**, because content is what forces membership. Adding it now would land a member whose
-surface is empty by construction. gen-memo, gen-vars and gen-rebuild each sat off the roster on the
-same footing while empty. Consume via `inputs.gen-assemble.lib`, never through `mkGenLibs`.
+**In the hub roster, in the `framework` stratum.** `gen/lib/mkGenLibs.nix` binds `assemble` by
+CONSTRUCTION — `import "${genInputs.gen-assemble}/lib" { … }` with the substrate passed in — rather
+than by re-exporting a self-resolved `.lib`, and declares its stratum explicitly, because the
+roster's stratum declaration is total by design: "a member with no entry here is a build error, never
+a member of an implicit residue bucket". The ruled timing was that the entry lands **with the first
+content migration, in the same batch**, and it did. Either entry works: `inputs.gen-assemble.lib`
+applied to a substrate, or the hub's `mkGenLibs` binding.
 
 ## Not this library's job
 
@@ -68,45 +69,53 @@ single-attrset-merge away at all times.
 
 ## Exports
 
-**None.** `import ./lib` is `{ }`, and so is `inputs.gen-assemble.lib`.
+Nine names, and the list is **exact**: `ci/tests/surface.nix` holds the library to it *and* asserts
+this sheet's [drift-check](#drift-check) block against the same literal, so a tenth export fails the
+suite until both are stated. The document cannot rot away from the library without something going
+red.
 
-Verify rather than trust:
+| Export                   | What it is                                                                                                                                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assemble`               | The protocol's one entry: unions the contributions, hands the result to the substrate's constructor, and is bound THROUGH the precondition check. Returns the substrate's `{ nodes, nodeOrder }` unchanged |
+| `union`                  | The union alone, for a consumer that wants the merged contribution before it reaches the constructor — which is also the only point at which the union's order-independence is observable                  |
+| `reserved`               | The labels the substrate privileges (`P`, `I`) with the relation each carries, published so a caller reads the reservation rather than discovering it from a throw                                         |
+| `mkId`                   | `mkId "host" "web1"` ⇒ `"host:web1"`. The identifier convention, whose job is ADDRESSING — two layers naming one node must land on it                                                                      |
+| `parseId`                | The inverse. Refuses by name on a bare name or on an empty half, rather than answering with a plausible-looking record that addresses nothing                                                              |
+| `idsOf`                  | `idsOf "host" [ "web1" "db1" ]` ⇒ the ids in the caller's order, which is a declaration and not this library's to lose                                                                                     |
+| `separator`              | The `":"` the convention is written with, exported so a caller composes with it instead of re-spelling it                                                                                                  |
+| `structuralDecls`        | `structuralDecls nodes` ⇒ the `children` and `imports` bodies the evaluator READS, under a nested carrier so that no flat name means two different things                                                  |
+| `substratePreconditions` | The checks as data — record, property, met — so a consumer can read WHICH substrate properties this library depends on instead of discovering them from a refusal                                          |
 
-```sh
-nix eval --json --file lib --apply 'x: builtins.attrNames x'    # => []
-```
-
-Entry, once there is something to enter: `inputs.gen-assemble.lib` (flake) — `import ./lib`
-(standalone). The root `default.nix` is the lib **value**, not a function, because gen-assemble
-declares no inputs; gen-prelude and gen-algebra ship the same shape, and gen-memo shipped it while it
-was a shell. When the toolkit acquires dependencies, `default.nix` becomes a function whose defaults
-fetch the flake-locked revs, per the gen root-file convention.
-
-`ci/tests/surface.nix` asserts the empty surface, so **the first export arrives as a failing test**.
-That is the intended behaviour: it obliges the author to state the new surface here and in the
-canonical reference in the same change, rather than widening the library silently.
+Entry: `inputs.gen-assemble.lib` (flake) or `import ./lib` (standalone). Both are **functions** of
+`{ prelude, scope, algebra }`, and the root `default.nix` is that same function rather than a value.
+gen-assemble declares no inputs of its own, so there is nothing to fetch and nothing to pin: the
+substrate arrives INJECTED and is constructed inside the consumer's own evaluation, which is the
+gen↔gen boundary rule's shape. `ci/tests/surface.nix` checks the formals rather than describing them.
 
 ## Entry points by task
 
-While the surface is empty the tasks are about the repository, not the library.
-
-| Task                                                                      | Reach for                                                                                                                                                                                            |
-| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Run the suite                                                             | `nix flake check ./ci` — the command CI runs (`.github/workflows/ci.yml`, `working-directory: ci`)                                                                                                   |
-| Run the suite as nix-unit, or one suite                                   | `nix-unit --flake ./ci#tests` · `nix-unit --flake ./ci#tests.purity`                                                                                                                                 |
-| Get a shell with the locked nix-unit, plus `ci` / `fmt` / `repl` commands | `nix develop ./ci` (or `direnv allow` — `.envrc` is `use flake ./ci`)                                                                                                                                |
-| Open the REPL                                                             | `nix repl --impure --file ci/repl.nix`                                                                                                                                                               |
-| Format                                                                    | `cd ci && nix fmt -- --ci`                                                                                                                                                                           |
-| Add the first export                                                      | Write it in `lib/`, then update `ci/tests/surface.nix`, this sheet's **Exports** section, and the canonical reference — the surface test fails until you do                                          |
-| Land the hub roster entry                                                 | **With the first content migration, same batch** — two lines in `gen/lib/mkGenLibs.nix`: the binding and the `strata` entry. Never as a separate tidy-up                                             |
-| Find what the toolkit's content is answerable to                          | The framework-toolkit library spec in the architecture papers repository — the membership criterion, the four refusals, the ordered-fold/commutative-union split, and the derived cost table         |
-| Find the open preconditions blocking content                              | The three named substrate defects in the issue tracker: the structural partition that omits `imports`, the reserved-label discard at `buildNodes`, and the destroyed declaration-ordered vertex list |
+| Task                                                                      | Reach for                                                                                                                                                                                       |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Run the suite                                                             | `nix flake check ./ci` — the command CI runs (`.github/workflows/ci.yml`, `working-directory: ci`)                                                                                              |
+| Run the suite as nix-unit, or one suite                                   | `nix-unit --flake ./ci#tests` · `nix-unit --flake ./ci#tests.purity`                                                                                                                            |
+| Get a shell with the locked nix-unit, plus `ci` / `fmt` / `repl` commands | `nix develop ./ci` (or `direnv allow` — `.envrc` is `use flake ./ci`)                                                                                                                           |
+| Open the REPL                                                             | `nix repl --impure --file ci/repl.nix`                                                                                                                                                          |
+| Format                                                                    | `cd ci && nix fmt -- --ci`                                                                                                                                                                      |
+| Add an export                                                             | Write it in `lib/`, then update `ci/tests/surface.nix`, this sheet's **Exports** table and its **Drift check** block, and the canonical reference — three surface cells fail until you do       |
+| Read what a contribution may carry                                        | `lib/contribute.nix`'s `contributionKeys`. The record is TOTAL over those six: an unknown key is refused by name at the constructor, never dropped                                              |
+| Find what the toolkit's content is answerable to                          | The framework-toolkit library spec in the architecture papers repository — the membership criterion, the four refusals, the ordered-fold/commutative-union split, and the derived cost table    |
+| Read which substrate properties are depended on                           | `lib/preconditions.nix`, or `substratePreconditions` at runtime. Each check is a PROPERTY probe naming its record, never a version comparison, and the suite arms them against a real unmet pin |
 
 ## Measured traps
 
-Every row was measured **in this repository, in this scaffolding run**, at the commit this sheet
-ships in. Commands are given so each is re-runnable rather than trusted. Where a row contradicts a
-sibling library's sheet, this one was re-measured here and the difference is stated.
+Every row was measured **in this repository**. Commands are given so each is re-runnable rather than
+trusted. Where a row contradicts a sibling library's sheet, this one was re-measured here and the
+difference is stated.
+
+★ **The rows quoting a cell name or a suite total were measured while the library was a shell**, and
+those readings are left as the readings they were rather than rewritten to today's figures: the trap
+is the finding, the count was only the instrument that exposed it. The live surface and the live
+suite total are in [Drift check](#drift-check) below.
 
 | Trap                                                                                                                                                                                                                                                                                                                                            | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -115,20 +124,22 @@ sibling library's sheet, this one was re-measured here and the difference is sta
 | **nix-unit collects only cells named `test-*`. A cell that loses the prefix vanishes and the run reports GREEN** — the count moves 5/5 → 4/4 with no diagnostic anywhere                                                                                                                                                                        | Renaming `test-lib-exports-nothing` to `lib-exports-nothing` in `ci/tests/surface.nix` and re-running gave `🎉 4/4 successful`, exit **0**. Reconcile declared-vs-collected **both ways** rather than reading the count (command below)                                                                                                                                                                                                                                                                         |
 | **An untracked file under `ci/tests/` is invisible to the flake — including a deliberately failing one.** New test files must be `git add`ed before any `nix` invocation, or the run is green about a tree that does not contain them                                                                                                           | A probe asserting `expr = 1; expected = 2;` was written to `ci/tests/staging.nix` and left untracked: `🎉 5/5 successful`, exit **0**. Positive control, same file, same run afterwards: `git add` it and the suite reports `😢 5/6`, exit **1**, naming `staging.test-untracked-file-is-invisible`. The green was invisibility, not absence                                                                                                                                                                    |
 | **`nix flake check` and nix-unit are different oracles.** `checks.default` is a homegrown batch asserter that forces every `expr`; nix-unit's `expectedError` is unassertable — so a guard cannot be tested for its own firing, and no check whose failure cannot be observed belongs under `flake.tests`                                       | Both armed here. Setting `surface.test-lib-exports-nothing`'s expectation to `[ "sentinel" ]`: `nix flake check` (cwd `ci/`, the workflow's own command) exits **1** with `error: FAIL surface.test-lib-exports-nothing: got [], expected ["sentinel"]`; nix-unit exits **1** with `😢 4/5`. Both catch a wrong value; neither can assert that a *throw* happened. This matters more here than elsewhere: the toolkit's specified preconditions are **refusals**, and a refusal cannot be tested on this output |
-| **A bare-leaf nix-unit target reports `0/0` — a false pass.** Establish a suite is non-vacuous before reading its green                                                                                                                                                                                                                         | This suite is **5 cells across 2 suites**, and the purity scan carries its own in-suite positive control (`test-forbidden-token-scan-is-live`, asserting the token predicate returns `[ "evalModules" ]` on a string that contains one) so its absence claim cannot pass by a dead predicate                                                                                                                                                                                                                    |
+| **A bare-leaf nix-unit target reports `0/0` — a false pass.** Establish a suite is non-vacuous before reading its green                                                                                                                                                                                                                         | Every absence claim in this suite carries an in-suite positive control: the purity scan's `test-forbidden-token-scan-is-live` asserts the token predicate returns `[ "evalModules" ]` on a string that contains one; the surface suite's mention predicate is made to read `false` in the same run; and each refusal has a clean arm through the same `throws` predicate. The live cell total is in **Drift check**                                                                                             |
 | **The purity scan reaches `lib/` — verified, not assumed.** An absence claim over source needs the scan armed, because an empty `lib/` or a broken `readDir` reports clean                                                                                                                                                                      | Injecting `let _sentinel = { lib }: lib.id; in` into `lib/default.nix` failed `purity.test-library-source-is-nixpkgs-lib-free`, naming both tokens: `[ "…/lib/default.nix: 'lib.'" "…/lib/default.nix: '{ lib }'" ]`. Reverted; the suite returns to 5/5                                                                                                                                                                                                                                                        |
 | **The surface tripwire is armed, not decorative**                                                                                                                                                                                                                                                                                               | Changing `lib/default.nix` from `{ }` to `{ sentinel = true; }` failed `surface.test-lib-exports-nothing` in the same run in which the other four passed: `😢 4/5`. Reverted                                                                                                                                                                                                                                                                                                                                    |
 | **The root flake has no `flake.lock`, and that is a consequence rather than an omission** — it declares zero inputs. `ci/flake.lock` is the only lock, and it is what the acceptance run uses                                                                                                                                                   | `flake.nix` has no `inputs` attribute; gen-prelude and gen-algebra are the same shape and likewise ship no root lock. Measured across the 20 roster members: the 18 that carry a root lock all declare inputs                                                                                                                                                                                                                                                                                                   |
 | **`nix develop ./ci` WRITES to the working tree**: git-hooks-nix installs `.git/hooks/pre-commit` and generates `.pre-commit-config.yaml` at the repository root                                                                                                                                                                                | Observed on the first `nix develop ./ci` here: *"git-hooks.nix: updating …/gen-assemble repo"*, then *"pre-commit installed at .git/hooks/pre-commit"*. `.pre-commit-config.yaml` is in `.gitignore` for this reason — do not stage it, and do not read its appearance as an untracked-file surprise                                                                                                                                                                                                            |
-| **The drift-check command carried by sibling sheets does not run.** `nix eval --json --expr 'builtins.attrNames (import ./lib)'` aborts in pure evaluation mode — a relative path in an `--expr` resolves to an absolute one, which pure mode forbids. A sheet's own verification command failing is the quiet version of an unverifiable claim | Measured here and, as a control, in a sibling: both abort with `error: access to absolute path '…/lib' is forbidden in pure evaluation mode`, and both answer `[]` under `--impure`. This sheet uses the `--file` form instead, which needs no `--impure`                                                                                                                                                                                                                                                       |
+| **The drift-check command carried by sibling sheets does not run.** `nix eval --json --expr 'builtins.attrNames (import ./lib)'` aborts in pure evaluation mode — a relative path in an `--expr` resolves to an absolute one, which pure mode forbids. A sheet's own verification command failing is the quiet version of an unverifiable claim | Measured here and, as a control, in a sibling: both abort with `error: access to absolute path '…/lib' is forbidden in pure evaluation mode`, and both answered `[]` under `--impure`. The `--file` form this sheet used instead has since died for a different reason — see the row below                                                                                                                                                                                                                      |
+| **AND THE `--file … --apply` FORM DIES THE MOMENT `lib/default.nix` BECOMES A FUNCTION OF ITS SUBSTRATE.** A drift check is the one command whose failure nobody notices: a reader who does not run it takes the stale output printed beside it as the answer                                                                                   | Measured here at the content commit: `nix eval --json --file lib --apply 'x: builtins.attrNames x'` ⇒ `error: expected a set but found a function: «lambda @ …/lib/default.nix:35:1»`. The same change broke `ci/repl.nix`, whose `// genAssemble` splice got the same error for the same reason. Both are repaired here, and the repair puts the substrate resolution in **one** place: `ci/repl.nix` builds the value and the drift check applies through it                                                  |
 | **`nix fmt -- --ci` run from a LINKED WORKTREE formats the MAIN CHECKOUT and reports green about a tree it never touched** (treefmt resolves the tree root via `.git/config`, and a worktree's `.git` is a pointer *file*). Not triggered here — this is a normal checkout — but it will bite anyone who takes a worktree of this repo          | The shared CI module sets `projectRootFile = null` precisely to select treefmt's native `git rev-parse --show-toplevel` detection for this reason; its own comment records that `--tree-root` is rejected by the wrapper and `TREEFMT_TREE_ROOT_FILE` is ignored. Verify which tree was touched (`git status`) rather than reading the formatter's exit code                                                                                                                                                    |
 
 ## Theory
 
 The toolkit claims **one** result, and claims it for the shape half only.
 
-**Implements** *(claimed by this repository's design; no code yet realizes it — the claim is what the
-first content is answerable to, and is recorded here so it cannot be quietly swapped)*
+**Implements** *(realized by `lib/contribute.nix`'s shape half — `union`'s `parentGraph`,
+`importGraph` and label space — and recorded here so the claim cannot be quietly swapped for a
+weaker one)*
 
 - **Mokhov 2017, *Algebraic Graphs with Class*** — the graph monoid: overlay is **commutative,
   associative and idempotent**, so combining contributed graph shape is order-independent, and the
@@ -147,7 +158,8 @@ Mokhov as covering both will build the wrong thing.
 **O(n·V + n·E)** in contributing layers and total vertices — degree 1 in each, which makes it linear
 in `n` at fixed total `V` and quadratic when per-contribution size is held fixed instead. Every price
 is paid **once at assembly and never per call**. Benchmarking at the thousands-of-hosts bar is owed
-before any construct is written; no figure here is a measurement.
+and **has not been done**; no figure here is a measurement. The constructs now exist, which makes
+that a debt rather than an impossibility.
 
 **Checked invariant.** `lib/` is free of the nixpkgs lib, enforced by `ci/tests/purity.nix` over
 `lib/**.nix` + `flake.nix` + `default.nix`; nixpkgs enters only in `ci/` (the nix-unit harness and
@@ -155,27 +167,42 @@ treefmt). Armed in this run — see the traps table.
 
 ## Drift check
 
+The library is a function of its substrate, so the check has to APPLY one — and it applies the
+acceptance run's own, resolved once in `ci/repl.nix` rather than a second time here. `--impure` is
+what resolving a local flake from an expression costs.
+
 ```sh
-nix eval --json --file lib --apply 'x: builtins.attrNames x'
+nix eval --json --impure --file ci/repl.nix --apply 'r: builtins.attrNames r.genAssemble'
 ```
 
 Current output (verbatim):
 
 ```json
-[]
+["assemble","idsOf","mkId","parseId","reserved","separator","structuralDecls","substratePreconditions","union"]
 ```
+
+★ **That block is not decoration — `ci/tests/surface.nix` parses it out of this file and asserts it
+against the library's real surface.** It is the same literal the exact-list tripwire holds the
+library to, so this document going stale is a failing test rather than something a reader has to
+notice.
 
 Reconcile the suite's declared cells against its collected ones, **both directions** — a `test-`
 prefix lost in an edit reports green:
 
 ```sh
-grep -rhoE '\btest-[a-z0-9-]+' ci/tests/ | sort > /tmp/declared
-nix-unit --flake ./ci#tests | grep -oE 'test-[a-z0-9-]+' | sort > /tmp/collected
+grep -rhoE '\btest-[A-Za-z0-9-]+' ci/tests/ | sort > /tmp/declared
+nix-unit --flake ./ci#tests | grep -oE 'test-[A-Za-z0-9-]+' | sort > /tmp/collected
 comm -23 /tmp/declared /tmp/collected   # declared but not collected — the silent-green case
 comm -13 /tmp/declared /tmp/collected   # collected but not declared
 ```
 
-Both are empty at this revision; the run is 5/5.
+★ **The character class must include `A-Za-z`, not just `a-z`.** A lowercase-only class truncates a
+camelCase cell name at its first capital, so `test-parseId-refuses-an-empty-type` and
+`test-parseId-refuses-an-empty-name` both reduce to `test-parse` — and a rename between two such
+cells reconciles clean. Measured here: the lowercase class collapses 42 names to 39.
+
+Both directions are empty at this revision, 42 declared and 42 collected; the run is **42/42** across
+three suites.
 
 **Checks.** Test-runner invocation (from the repo root; CI runs the same command with
 `working-directory: ci`):

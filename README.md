@@ -8,11 +8,10 @@ same protocol around the same call every time. What is genuinely per-framework i
 call** — the union, the identifier convention, and the structural declarations the evaluator
 demands. gen-assemble holds the second, once, and never the first.
 
-> **This repository is a scaffold. The library exports nothing yet.**
-> `lib/default.nix` is `{ }`. The toolkit's constructs are specified and unwritten, because each is
-> blocked on a named, open substrate defect — and the construction that answers those defects is a
-> **refusal**, which is content rather than scaffolding. See
-> [Status](#status--what-is-here-and-what-is-not).
+> **The library is a function of its substrate.** `import ./lib` and `inputs.gen-assemble.lib` both
+> take `{ prelude, scope, algebra }` and return the toolkit's nine exports. gen-assemble declares no
+> inputs of its own: the substrate arrives **injected** and is constructed inside the consumer's own
+> evaluation. See [Status](#status--what-is-here-and-what-is-not).
 
 ## Table of Contents
 
@@ -27,27 +26,27 @@ demands. gen-assemble holds the second, once, and never the first.
 
 ## Status — what is here, and what is not
 
-**Here:** the repository shell — flake, standalone entry, CI wired to the shared gen runner, the
-purity invariant with its own positive control, and a surface tripwire that fails the moment an
-export appears without the documentation to match.
+**Here:** the contribution protocol and its union, the identifier convention, the structural
+declarations, and the substrate precondition checks — nine exports, held to an exact list by a
+surface tripwire that also binds the agent sheet's published surface to the library's real one. Plus
+the purity invariant with its own positive control, and CI wired to the shared gen runner.
+
+The three substrate defects this library was specified against have all landed, and **the refusal
+they motivated is content that stayed**: `substratePreconditions` publishes the properties the
+assembly depends on, and an assembly over a substrate failing any of them refuses to evaluate by
+name, naming the record. Two of those three failed *silently* — a library that built green against
+them would have handed a consumer a wrong answer with no diagnostic anywhere — which is why the
+check is a construct rather than a note in a changelog, and why the suite arms it against a real
+substrate pin on which it genuinely fails.
+
+**In the hub roster, in the `framework` stratum**, landed with this content as the ruled timing
+required: content is what forces membership, and the roster's stratum declaration is total by
+design — a member with no entry there is a build error, never a member of an implicit residue
+bucket. The binding is by construction, `import "${genInputs.gen-assemble}/lib" { … }` with the
+substrate passed in, never a re-exported self-resolved `.lib`.
 
 **Not here, and deliberately:**
 
-- **Any toolkit content.** The contribution protocol and its union, the identifier convention, and
-  the structural declarations are specified. Each is blocked on an open substrate defect: the
-  structural partition reserves a name nothing reads while omitting the one the resolver traverses;
-  a contributed reserved label silently discards the declared parent graph; and the node builder
-  destroys the declaration-ordered vertex list. **Two of those three fail silently**, so a library
-  that built green against them would hand a consumer a wrong answer with no diagnostic anywhere.
-  The specified construction therefore **refuses to evaluate by name** while a precondition is
-  unmet, naming the defect — and that refusal is content. An export landed ahead of it would be a
-  construct with no armed refusal behind it.
-- **Hub roster membership and a stratum.** The ruled timing is that the entry lands **with the first
-  content migration, in the same batch**: content is what forces membership, and adding two lines to
-  `gen/lib/mkGenLibs.nix` now would land a member whose surface is empty by construction. The
-  roster's stratum declaration is total and explicit by design — a member with no entry there is a
-  build error, never a member of an implicit residue bucket. gen-memo, gen-vars and gen-rebuild each
-  sat off the roster on the same footing while empty.
 - **Migrated content.** The assembly-band constructs that today live in
   [gen-settings](https://github.com/sini/gen-settings) — the batch-level knot-tying resolver, the
   cycle-message rendering, and the address rendering that travels with it — are destined here and
@@ -116,13 +115,24 @@ discriminate this name from the rival it was run against. Contract-naming carrie
   → user kind hierarchy, which would re-import the topology the agnosticism law forbids.
 - **A label collision IS refused, by name.** A label names a *dimension*, not a node, so two layers
   claiming one label is a genuine collision with no order semantics to resolve it. The refusal names
-  both contributors.
+  both contributors — which is why a contribution's `name` is **required** rather than defaulted: a
+  default turns "names both contributors" into a constant that names neither, and the property
+  survives only if a contribution cannot exist without a name to be named by.
+- **The contribution record is TOTAL, and an unknown key is refused at the constructor.** A protocol
+  that reads the keys it knows and drops the rest cannot enforce the shape it publishes: a mistyped
+  field, or one an earlier revision named, produces an empty result and a green evaluation. That is
+  a layer's content vanishing with nothing said. The refusal is a property of the *constructor*, not
+  of a later scan, so the contribution the protocol cannot honour never forms.
 - **The identifier convention is addressing, not disambiguation.** One spelling for one node, so
   that two layers naming the same thing *land on it*. Node-identifier collision is not the failure
-  mode: identity is content-independent, and co-contribution is what the ordered fold is for.
-- **Refuse to evaluate while a precondition is unmet.** Two of the three open substrate defects fail
-  silently, and a library that builds green on a substrate that will serve stale declarations is the
-  exact shape the gate exists to stop.
+  mode: identity is content-independent, and co-contribution is what the ordered fold is for. An
+  *empty half* is refused for the same reason a dropped key is: `":web1"` is a record that parses
+  and addresses nothing.
+- **Refuse to evaluate while a precondition is unmet.** Two of the three substrate defects this
+  library was specified against failed silently, and a library that builds green on a substrate that
+  will serve stale declarations is the exact shape the gate exists to stop. All three have landed;
+  the check stayed, because what it asserts is a *property of the pinned substrate* and not a
+  version.
 - **Nothing is paid per call.** Every price the design carries is paid once, at assembly. That is
   what makes the toolkit cheaper than the hand-written sites it replaces rather than merely tidier.
 - **nixpkgs-lib-free.** `lib/` depends on no nixpkgs lib; nixpkgs enters only in `ci/`, as the test
@@ -140,24 +150,45 @@ discriminate this name from the rival it was run against. Contract-naming carrie
 }
 ```
 
-Then `gen-assemble.lib` is the `genAssemble` attrset. It is `{ }` at this revision.
+Then `gen-assemble.lib` is a **function** of the substrate:
+
+```nix
+genAssemble = inputs.gen-assemble.lib {
+  scope = inputs.gen-scope.lib;
+  prelude = inputs.gen-prelude.lib;
+  algebra = inputs.gen-algebra.lib;
+};
+
+genAssemble.assemble {
+  contributions = [
+    {
+      name = "hosts"; # required: every refusal this protocol makes is stated in it
+      parentGraph = scope.edge "host:web1" "env:prod";
+      decls."host:web1" = { tier = "base"; };
+    }
+  ];
+}
+```
 
 ### Standalone (non-flake)
 
 ```nix
 let genAssemble = import (fetchTarball "https://github.com/sini/gen-assemble/archive/main.tar.gz");
-in genAssemble
+in genAssemble { inherit prelude scope algebra; }
 ```
 
-The standalone entry is the lib **value**, not a function, because gen-assemble declares no inputs —
-the same shape gen-prelude and gen-algebra ship. It becomes a function of its dependencies when it
-acquires any.
+The standalone entry is the same **function** the flake output is. gen-assemble declares no inputs,
+so there is nothing to fetch and nothing to pin: the substrate is injected and constructed inside the
+consumer's own evaluation, which is what the gen↔gen boundary rule asks for.
 
 ## Testing
 
-Two suites under `ci/`: `purity` (the nixpkgs-lib-free invariant over `lib/**.nix` + `flake.nix` +
+Three suites under `ci/`: `purity` (the nixpkgs-lib-free invariant over `lib/**.nix` + `flake.nix` +
 `default.nix`, carrying its own positive control so the absence claim cannot pass by a dead
-predicate) and `surface` (the empty-export tripwire, plus the standalone-entry/lib agreement).
+predicate), `surface` (the exact-list export tripwire, the standalone-entry/lib agreement, and the
+binding between the library's real surface and the one `AGENTS.md` publishes), and `protocol` (the
+acceptance surface for the contribution protocol, the identifier convention, the structural
+declarations, and the precondition refusals).
 
 ```bash
 nix flake check ./ci                     # what CI runs
@@ -165,9 +196,15 @@ nix-unit --flake ./ci#tests              # run everything
 nix-unit --flake ./ci#tests.purity       # a single suite
 ```
 
-The surface suite is a **tripwire, not a wall**: when the first export lands it fails, and the author
-updates it alongside `AGENTS.md` and the canonical reference in the same change. That is the point —
-the library cannot widen silently.
+The surface suite is a **tripwire, not a wall**: a new export fails it, and the author states the
+new surface in `ci/tests/surface.nix`, in `AGENTS.md` and in the canonical reference in the same
+change. The library cannot widen silently, and the sheet cannot fall behind it silently either.
+
+**Every refusal in `protocol` is armed**, and armed the same way: the seeded defect fails in the same
+run in which its clean arm passes, and each clean arm sits beside its seed rather than in another
+suite. A refusal asserted with no firing seed is a cell that agrees with the defect it was written to
+catch — including the precondition refusal, which is run against a real substrate pin on which it
+genuinely fails rather than against a manufactured one.
 
 `nix-unit` collects only cells named `test-*`; a cell that loses the prefix disappears and the run
 still reports green. `AGENTS.md` carries the both-ways reconciliation command, and the rest of the
@@ -185,5 +222,10 @@ The **content** half claims no academic result and is stated here beside the cit
 reason: it is an ordered fold by positional authority, a project ruling rather than a theorem, and a
 reader who takes the monoid as covering both halves will build the wrong thing.
 
-No code in this repository realizes either yet. They are recorded because the first content is
-answerable to them, and a claim stated up front cannot be quietly swapped for a weaker one later.
+The shape half is realized by `lib/contribute.nix` — `union`'s `parentGraph`, `importGraph` and
+label space overlay through the substrate's published accessor, and the suite asserts the
+order-independence under *denotational* graph equality rather than a literal list compare, because
+overlay concatenates and a literal compare would read `false` on a correct implementation. The
+content half is realized beside it as the ordered fold, and the two are kept apart in the code for
+the same reason they are kept apart here: a reader who takes the monoid as covering both will build
+the wrong thing.
