@@ -29,6 +29,12 @@ in
 
   # The inverse, for a consumer reading a node id back. Refuses by name rather than answering with a
   # plausible-looking half: a silent `null` here becomes a wrong lookup somewhere downstream.
+  #
+  # ★ AN EMPTY HALF IS A PLAUSIBLE-LOOKING HALF, which is why the separator being present is not on
+  # its own enough to read an identifier back. `":web1"` parses to a node with no type and `"host:"`
+  # to a type with no node under it; each is a well-formed-looking record that addresses nothing,
+  # and handing one back is the answer this reader exists not to give. Both halves are therefore
+  # required to be non-empty, and each is refused separately so the diagnostic says which one failed.
   parseId =
     id:
     let
@@ -36,14 +42,19 @@ in
       # string elements. The prelude carries no `splitString`, and wrapping one here would be this
       # library adding a utility rather than composing one.
       parts = builtins.filter builtins.isString (builtins.split separator id);
+      # Names may themselves contain the separator; only the FIRST field is the type.
+      type = builtins.head parts;
+      name = prelude.concatStringsSep separator (prelude.tail parts);
     in
     if builtins.length parts < 2 then
       throw "gen-assemble: `${id}` is not a conventional node identifier — the convention is `<type>${separator}<name>`, and a bare name has no type to read."
+    else if type == "" then
+      throw "gen-assemble: `${id}` is not a conventional node identifier — the convention is `<type>${separator}<name>`, and the type half is empty. An empty type addresses nothing while reading like a parse that succeeded."
+    else if name == "" then
+      throw "gen-assemble: `${id}` is not a conventional node identifier — the convention is `<type>${separator}<name>`, and the name half is empty. A type with no node under it addresses nothing while reading like a parse that succeeded."
     else
       {
-        type = builtins.head parts;
-        # Names may themselves contain the separator; only the FIRST field is the type.
-        name = prelude.concatStringsSep separator (prelude.tail parts);
+        inherit type name;
       };
 
   # `idsOf "host" [ "web1" "db1" ]` ⇒ `[ "host:web1" "host:db1" ]`, order preserved because the
