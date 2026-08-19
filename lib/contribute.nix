@@ -40,8 +40,9 @@
 # id, overlaid — so the declared member set across contributions is a SET UNION with no ordering
 # rule required.
 #
-# ★ AND `vertices` IS THE ONLY THING THAT DECLARES: EVERY EDGE ENDPOINT IS CHECKED AGAINST THE
-# DECLARED MEMBER UNION AT THIS BOUNDARY, UNCONDITIONALLY. A node an edge merely MENTIONS is not
+# ★ AND `vertices` IS THE ONLY THING THAT DECLARES A NODE A RELATION MAY NAME — the check covers the
+# relation channels; `decls`/`types` content keys sit outside it. EVERY EDGE ENDPOINT IS CHECKED
+# AGAINST THE DECLARED MEMBER UNION AT THIS BOUNDARY, UNCONDITIONALLY. A node an edge merely MENTIONS is not
 # thereby a member, and the difference is invisible downstream — the substrate's graph unions both
 # endpoints of every edge into its node set by construction, so an edge naming an id nobody declared
 # INVENTS that node and the assembly widens with nothing said. That is why a graph-borne vertex does
@@ -300,7 +301,7 @@ let
               f:
               "the contribution `${f.contributor}` carries an edge under the label `${f.label}` whose `${f.side}` endpoint `${f.id}` is not a declared member"
             ) undeclared
-          }. Membership is DECLARED: a contribution's `vertices` is the only thing that says which nodes exist, and the substrate unions BOTH endpoints of every edge into its node set — so an endpoint no layer declared is a node the relation invents, admitted with nothing said. Declare the id in some contribution's `vertices` — any layer's will do, since one layer may relate what another declared — or drop the edge.";
+          }. Membership is DECLARED: a contribution's `vertices` is the only thing that declares a node a RELATION may name (`decls`/`types` content keys are not covered by this check), and the substrate unions BOTH endpoints of every edge into its node set — so an endpoint no layer declared is a node the relation invents, admitted with nothing said. Declare the id in some contribution's `vertices` — any layer's will do, since one layer may relate what another declared — or drop the edge.";
 
       # SHAPE: commutative union. The result is a graph, and which layer went first is not
       # observable in the node set or the edge relations.

@@ -135,9 +135,10 @@ discriminate this name from the rival it was run against. Contract-naming carrie
   declared **invents** that node and the assembly widens with nothing said. The check ranges over
   every edge family a contribution carries — `parentGraph`, `importGraph` and every `edgeGraphs`
   label — and reads **both** endpoints, because an edge *from* an undeclared id invents it by the
-  identical construction that an edge *to* one does. `vertices` is the only thing that declares: an
-  id a graph carries as a vertex is presence, not declaration, and reading it as a declaration would
-  make the check agree with every edge it exists to refuse. The declared member union is **global**,
+  identical construction that an edge *to* one does. `vertices` is the only thing that declares a node
+  a relation may name — the check covers the relation channels, and `decls`/`types` content keys sit
+  outside it: an id a graph carries as a vertex is presence, not declaration, and reading it as a
+  declaration would make the check agree with every edge it exists to refuse. The declared member union is **global**,
   so one layer may relate what another declared, while the diagnostic names the layer whose
   contribution carried the offending edge, the edge label, and the missing id. It runs at the union
   boundary **unconditionally** — it does not ride the substrate's `strict` knob, because a soundness
