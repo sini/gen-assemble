@@ -123,6 +123,13 @@ discriminate this name from the rival it was run against. Contract-naming carrie
   field, or one an earlier revision named, produces an empty result and a green evaluation. That is
   a layer's content vanishing with nothing said. The refusal is a property of the *constructor*, not
   of a later scan, so the contribution the protocol cannot honour never forms.
+- **Membership is declared, and it combines by set union.** A contribution's `vertices` are the ids
+  that layer declares to be members of the assembly, whether or not any relation holds of them. They
+  are carried as one isolated vertex per id, overlaid — so the *same* commutative, associative,
+  idempotent monoid the rest of the shape half rests on supplies the union, and no ordering rule is
+  owed: two layers declaring one id declare one member, and which declared it first is not
+  observable. A declared id that no relation contains is a root. **It is carried, not validated:**
+  nothing here relates the declared members to the ids the edge graphs mention, in either direction.
 - **The identifier convention is addressing, not disambiguation.** One spelling for one node, so
   that two layers naming the same thing *land on it*. Node-identifier collision is not the failure
   mode: identity is content-independent, and co-contribution is what the ordered fold is for. An
@@ -163,6 +170,7 @@ genAssemble.assemble {
   contributions = [
     {
       name = "hosts"; # required: every refusal this protocol makes is stated in it
+      vertices = [ "host:web1" "host:db1" ]; # the members this layer declares
       parentGraph = scope.edge "host:web1" "env:prod";
       decls."host:web1" = { tier = "base"; };
     }
