@@ -65,11 +65,28 @@ let
   # refusals below are read against: a constructor that refused everything would pass each of them.
   total = {
     name = "total";
+    vertices = [ (mkId "host" "solo") ];
     parentGraph = scope.vertex (mkId "host" "solo");
     importGraph = scope.empty;
     edgeGraphs = [ ];
     decls = { };
     types = { };
+  };
+
+  # Two layers whose declared membership OVERLAPS, for the set-union half of the protocol.
+  membersA = {
+    name = "membersA";
+    vertices = [
+      (mkId "host" "a")
+      (mkId "host" "shared")
+    ];
+  };
+  membersB = {
+    name = "membersB";
+    vertices = [
+      (mkId "host" "shared")
+      (mkId "host" "b")
+    ];
   };
 
   merged = union {
@@ -226,16 +243,82 @@ in
       expected = [ ];
     };
 
-    # ── THE RECORD IS TOTAL: a key the protocol does not carry is REFUSED, never dropped ──
-    # Three surface forms, because the class is "a key this protocol does not carry" and a cell that
-    # only ever sees one spelling of it is a cell about that spelling. A dropped key is the silent
-    # failure this library exists to not have: the layer's content vanishes and the run stays green.
-    test-the-vertices-key-is-refused-rather-than-dropped = {
-      expr = throws (union {
-        contributions = [ (base // { vertices = [ (mkId "host" "solo") ]; }) ];
-      });
+    # ── `vertices` IS THE DECLARED-MEMBERSHIP CARRIER ──
+    # A layer that declares members and nothing else puts them in the node set: membership is a
+    # declaration in its own right rather than something only a relation can imply. A declared id no
+    # relation contains is a root.
+    test-a-declared-vertex-becomes-a-node = {
+      expr =
+        builtins.attrNames
+          (assemble {
+            contributions = [
+              {
+                name = "solo";
+                vertices = [ (mkId "host" "solo") ];
+              }
+            ];
+          }).nodes;
+      expected = [ (mkId "host" "solo") ];
+    };
+    # Two layers declaring one id declare ONE member. Asserted DENOTATIONALLY, because overlay
+    # concatenates: a literal list compare would read the duplicate the monoid's idempotence says is
+    # not there, and would fail on a correct implementation.
+    test-declared-members-union-as-a-set = {
+      expr =
+        (asSets
+          (union {
+            contributions = [
+              membersA
+              membersB
+            ];
+          }).parentGraph
+        ).vertices;
+      expected = [
+        (mkId "host" "a")
+        (mkId "host" "b")
+        (mkId "host" "shared")
+      ];
+    };
+    # And which layer declared first is not observable in the member set — the same commutative
+    # monoid the rest of the shape half rests on, so no ordering rule is owed.
+    test-the-declared-member-set-is-order-independent = {
+      expr =
+        asSets
+          (union {
+            contributions = [
+              membersA
+              membersB
+            ];
+          }).parentGraph == asSets
+          (union {
+            contributions = [
+              membersB
+              membersA
+            ];
+          }).parentGraph;
       expected = true;
     };
+    # At the assembly, where the node ORDER is a list and therefore the one place a duplicate could
+    # survive: three nodes, the shared id once, in the order the layers declared it.
+    test-the-declared-members-reach-the-assembly-as-one-node-each = {
+      expr =
+        (assemble {
+          contributions = [
+            membersA
+            membersB
+          ];
+        }).nodeOrder;
+      expected = [
+        (mkId "host" "a")
+        (mkId "host" "shared")
+        (mkId "host" "b")
+      ];
+    };
+
+    # ── THE RECORD IS TOTAL: a key the protocol does not carry is REFUSED, never dropped ──
+    # Two surface forms, because the class is "a key this protocol does not carry" and a cell that
+    # only ever sees one spelling of it is a cell about that spelling. A dropped key is the silent
+    # failure this library exists to not have: the layer's content vanishes and the run stays green.
     test-an-unheard-of-key-is-refused-rather-than-dropped = {
       expr = throws (union {
         contributions = [ (base // { attrs = { }; }) ];

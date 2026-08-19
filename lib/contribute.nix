@@ -33,6 +33,13 @@
 # carry, gets an empty result and a green evaluation — a layer's content vanishing with nothing
 # said, entered through the front door. The refusal is therefore a property of the CONSTRUCTOR and
 # not of a later scan, so the bad intermediate never forms.
+#
+# ★ MEMBERSHIP IS DECLARED, AND IT IS ITS OWN HALF OF THE SHAPE. A contribution's `vertices` are the
+# ids that layer declares to be members of the assembly, whether or not any relation holds of them.
+# They combine by the same commutative union as every other piece of shape — one isolated vertex per
+# id, overlaid — so the declared member set across contributions is a SET UNION with no ordering
+# rule required. It is carried and NOT checked against the relations: this protocol does not relate
+# what was declared to what the edges mention, in either direction.
 {
   prelude,
   scope,
@@ -57,11 +64,13 @@ let
   # a layer contributing containment, it stops a layer smuggling containment in under a name the
   # substrate privileges, where it would displace what another layer declared.
   #
-  # There is no `vertices` key and no need for one: an isolated vertex is a graph, and it travels as
-  # `parentGraph = scope.vertex id` like every other piece of shape. A second spelling for it would
-  # be a second way to say the same thing, and the constructor's own argument has none either.
+  # `vertices` is the DECLARED-MEMBERSHIP CARRIER: the ids a contribution declares to be members of
+  # the assembly, independent of any relation holding of them. It is a list of ids and not a graph
+  # because membership is what a layer knows about itself — a layer enumerates what it brings, and
+  # whether anything contains it is a separate declaration another layer may make.
   contributionKeys = [
     "name"
+    "vertices"
     "parentGraph"
     "importGraph"
     "edgeGraphs"
@@ -95,16 +104,29 @@ let
     else if c.name == "" then
       throw "gen-assemble: ${at} offers an EMPTY `name`. An empty name is writable and it names nothing, so it carries a refusal's actionability away exactly as an absent one does while reading like a declaration."
     else if unknown != [ ] then
-      throw "gen-assemble: the contribution `${c.name}` offers ${builtins.toJSON unknown}, which this protocol does not carry. The record is total over ${builtins.toJSON contributionKeys}, and an unknown key is refused here rather than dropped, because a dropped key is a layer's content vanishing with nothing said. An isolated vertex travels as `parentGraph = scope.vertex \"<id>\"`, not as a key of its own."
+      throw "gen-assemble: the contribution `${c.name}` offers ${builtins.toJSON unknown}, which this protocol does not carry. The record is total over ${builtins.toJSON contributionKeys}, and an unknown key is refused here rather than dropped, because a dropped key is a layer's content vanishing with nothing said."
     else
       {
         inherit (c) name;
+        vertices = c.vertices or [ ];
         parentGraph = c.parentGraph or scope.empty;
         importGraph = c.importGraph or scope.empty;
         edgeGraphs = c.edgeGraphs or [ ];
         decls = c.decls or { };
         types = c.types or { };
       };
+
+  # THE DECLARED MEMBER SET, CARRIED INTO THE SHAPE. One isolated vertex per declared id, overlaid —
+  # so combining the declarations of several layers IS the graph monoid's own overlay, and the SET
+  # UNION the protocol wants across contributions needs no rule of its own: overlay is commutative,
+  # associative and idempotent, so which layer declared a member first is not observable and two
+  # layers declaring one id declare one member. A member no relation contains is a root, which is
+  # already what an isolated vertex means to the constructor.
+  #
+  # ★ THIS CARRIES MEMBERSHIP; IT DOES NOT CHECK IT. Nothing here relates the declared members to
+  # the ids the edge graphs mention, in either direction: an edge may name an id no contribution
+  # declared, and a declared id may be mentioned by no relation at all. Both are accepted.
+  declaredMembers = c: scope.overlays (map scope.vertex c.vertices);
 
   # Each contributed edge graph tagged with the contribution that offered it. The tag is the only
   # reason a name travels past the constructor, and it is what makes the refusal below actionable.
@@ -175,7 +197,18 @@ let
       shapeOf = f: scope.overlays (map f cs);
     in
     {
-      parentGraph = shapeOf (c: c.parentGraph);
+      # The declared members ride with containment, because that is the relation whose graph carries
+      # the assembly's membership: a declared id with no parent edge is a root, and a declared id
+      # another layer contains is the same node reached by both declarations. They LEAD their own
+      # contribution's containment shape — the enumeration is the caller's own declaration, and the
+      # vertex sequence is content that rides the declared order.
+      parentGraph = shapeOf (
+        c:
+        scope.overlays [
+          (declaredMembers c)
+          c.parentGraph
+        ]
+      );
       importGraph = shapeOf (c: c.importGraph);
       edgeGraphs = checkedLabels;
 
