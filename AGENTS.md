@@ -208,7 +208,7 @@ camelCase cell name at its first capital, so `test-parseId-refuses-an-empty-type
 `test-parseId-refuses-an-empty-name` both reduce to `test-parse` — and a rename between two such
 cells reconciles clean. Measured here: the lowercase class collapses 45 distinct names to 42.
 
-Both directions are empty at this revision, 64 declared and 64 collected; the run is **64/64** across
+Both directions are empty at this revision, 94 declared and 94 collected; the run is **94/94** across
 three suites.
 
 **Checks.** Test-runner invocation (from the repo root; CI runs the same command with
