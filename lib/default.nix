@@ -47,16 +47,33 @@ let
   # substrate's constructor, and it is bound THROUGH the precondition check so that a substrate
   # carrying one of the three named defects refuses here rather than serving a wrong answer.
   #
-  # It returns the substrate's own record — `{ nodes, nodeOrder }` — unchanged. That is plain data,
-  # and re-wrapping it would put a second shape in front of a consumer for no gain.
+  # It returns the substrate's own record — `{ nodes, nodeOrder, kinds }` — unchanged. That is plain
+  # data, and re-wrapping it would put a second shape in front of a consumer for no gain.
+  #
+  # ★ `kinds` IS AN ASSEMBLY-LEVEL PARAMETER, BESIDE `strategies` AND `strict`, AND NOT AN EIGHTH
+  # CONTRIBUTION KEY. The split is between a per-node FACT and the VOCABULARY that fact is declared
+  # in: `types` is what one layer says about one node, so it rides the contribution and folds by
+  # position; a kind registry is the FRAMEWORK's vocabulary, one per assembly, carrying the `below`
+  # relation every kind is ranked in. A per-contribution registry would need those relations merged
+  # across layers with a combined acyclicity verdict — a union with no order semantics to settle it,
+  # which is the shape this protocol already refuses for `edgeGraphs` labels.
+  #
+  # It crosses no new boundary: `kinds` is one of `buildRoots`' own closed formals, which `assemble`
+  # was leaving at its `null` default — and that default is what made `types`, a key the protocol
+  # declares itself total over, unhonourable one layer down. Nor is it derived from the union'd
+  # `types`: auto-registering every declared spelling is the free-form kind set the substrate's
+  # registry was created to close, and it would make a typo a kind.
   assemble =
     {
       contributions,
       strategies ? { },
       strict ? true,
+      kinds ? null,
     }:
     preconditions.require (
-      scope.buildRoots (contribute.union { inherit contributions strategies; } // { inherit strict; })
+      scope.buildRoots (
+        contribute.union { inherit contributions strategies; } // { inherit strict kinds; }
+      )
     );
 in
 {

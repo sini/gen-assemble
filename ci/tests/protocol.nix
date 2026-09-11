@@ -265,6 +265,65 @@ let
     ];
   };
 
+  # ── THE FRAMEWORK'S KIND VOCABULARY ──
+  # `kinds` is a parameter of the ASSEMBLY and not a contribution key, so it is bound once here and
+  # handed to the calls whose fixtures declare a kind. `base` and `contentDeclared` both type their
+  # node `host`, so ONE registry serves them both, and the unregistered-spelling cell reuses it
+  # rather than growing a second: an unregistered kind is a spelling this registry does not carry,
+  # which a one-kind registry states more directly than a second registry would.
+  hostKinds = scope.mkKinds [ (scope.mkKind { name = "host"; }) ];
+
+  # C1-SHAPED, and taken from the corpus's own primary scope rather than invented: three kinds, a
+  # coordinate node among them, every node carrying a kind. This is the fixture for the two-paths
+  # cell below, the one place the toolkit path and a direct constructor call are compared.
+  corpusIds = [
+    "bombazine"
+    "damask"
+    "faille"
+    "seam:bombazine:faille"
+  ];
+  corpusDecls = {
+    bombazine.spool = 1;
+    damask.spool = 2;
+    faille.spool = 3;
+    "seam:bombazine:faille" = { };
+  };
+  corpusTypes = {
+    bombazine = "thimble";
+    damask = "thimble";
+    faille = "bobbin";
+    "seam:bombazine:faille" = "seam";
+  };
+  corpusKinds = scope.mkKinds (
+    map (n: scope.mkKind { name = n; }) [
+      "thimble"
+      "bobbin"
+      "seam"
+    ]
+  );
+  # The direct call a framework otherwise writes, and the protocol call that must answer the same.
+  directly =
+    types:
+    scope.buildRoots {
+      kinds = corpusKinds;
+      parentGraph = scope.vertices corpusIds;
+      decls = corpusDecls;
+      inherit types;
+    };
+  throughTheProtocol =
+    types:
+    assemble {
+      contributions = [
+        {
+          name = "corpus";
+          vertices = corpusIds;
+          decls = corpusDecls;
+          inherit types;
+        }
+      ];
+      kinds = corpusKinds;
+    };
+
   merged = union {
     contributions = [
       base
@@ -283,12 +342,14 @@ let
       base
       override
     ];
+    kinds = hostKinds;
   };
   builtReversed = assemble {
     contributions = [
       override
       base
     ];
+    kinds = hostKinds;
   };
 
   # Denotational graph equality: `overlay` concatenates, so Mokhov's axioms hold up to the graph's
@@ -821,6 +882,7 @@ in
       expr =
         (assemble {
           contributions = [ contentDeclared ];
+          kinds = hostKinds;
           strict = false;
         }).nodeOrder;
       expected = [ (mkId "host" "a") ];
@@ -846,6 +908,159 @@ in
         override
       ];
       expected = [ ];
+    };
+
+    # ── `types` IS A KEY THE PROTOCOL CAN NOW HONOUR, BECAUSE `kinds` ROUTES THROUGH ──
+    # The record declares itself TOTAL over seven keys, `types` among them, and a key accepted at
+    # the boundary and killed one layer down is the same silence that totality exists to close,
+    # entered from inside. `kinds` is the assembly's parameter — the framework's VOCABULARY, one per
+    # assembly — and `types` is the per-node FACT a layer declares in it.
+    test-a-declared-kind-reaches-the-assembled-node = {
+      expr =
+        (assemble {
+          contributions = [
+            {
+              name = "L";
+              vertices = [ (mkId "host" "a") ];
+              types.${mkId "host" "a"} = "host";
+            }
+          ];
+          kinds = hostKinds;
+        }).nodes.${mkId "host" "a"}.type;
+      expected = "host";
+    };
+    # ★ AND THE REFUSAL IS NOT TRADED AWAY FOR IT. Omitting the registry while declaring a kind is
+    # still refused, so routing the argument introduces no silence of its own — which is the
+    # property that would have been lost had `kinds` defaulted to an empty registry instead of null.
+    test-a-declared-kind-without-a-registry-is-still-refused = {
+      expr = throws (assemble {
+        contributions = [
+          {
+            name = "L";
+            vertices = [ (mkId "host" "a") ];
+            types.${mkId "host" "a"} = "host";
+          }
+        ];
+      });
+      expected = true;
+    };
+    # And the vocabulary BINDS: a spelling the registry does not carry is refused even though a
+    # registry was supplied, so the cell above is not passing on "any registry will do".
+    test-an-unregistered-kind-is-refused-against-the-supplied-registry = {
+      expr = throws (assemble {
+        contributions = [
+          {
+            name = "L";
+            vertices = [ (mkId "host" "a") ];
+            types.${mkId "host" "a"} = "typo";
+          }
+        ];
+        kinds = hostKinds;
+      });
+      expected = true;
+    };
+    # ★ THE VOCABULARY IS NOT AN EIGHTH CONTRIBUTION KEY, and this is where that is asserted rather
+    # than assumed: offered ON a contribution it is refused by name against the same seven. The
+    # totality claim the protocol publishes is unchanged by the routing.
+    test-kinds-offered-as-a-contribution-key-is-still-refused = {
+      expr = throws (union {
+        contributions = [
+          {
+            name = "L";
+            vertices = [ (mkId "host" "a") ];
+            kinds = hostKinds;
+          }
+        ];
+      });
+      expected = true;
+    };
+
+    # ── AN ID NO LAYER CONTRIBUTED A VALUE FOR IS ABSENT, NOT PRESENT AND EMPTY ──
+    # `null` means "this layer does not contribute", so an id whose every entry is null has NO
+    # layers — and folding the empty layer list once answered `{ }`, a value. The substrate keeps
+    # `{ }` and reads it as a declared kind, so the author was told they had declared a kind named
+    # `{ }` when they had declared none. Asserted over BOTH content families, because the defect was
+    # the fold's and not `types`': a `types`-shaped patch would leave `decls` minting the same
+    # present-empty out of an absence.
+    test-an-all-null-types-entry-leaves-the-folded-record = {
+      expr =
+        (union {
+          contributions = [
+            {
+              name = "L";
+              vertices = [ (mkId "host" "a") ];
+              types.${mkId "host" "a"} = null;
+            }
+          ];
+        }).types;
+      expected = { };
+    };
+    test-an-all-null-decls-entry-leaves-the-folded-record = {
+      expr =
+        (union {
+          contributions = [
+            {
+              name = "L";
+              vertices = [ (mkId "host" "a") ];
+              decls.${mkId "host" "a"} = null;
+            }
+          ];
+        }).decls;
+      expected = { };
+    };
+    # ★ AND THE ASSEMBLY IS THE REASON THE FOLD WAS REPAIRED: the all-null contribution now
+    # assembles, with the node's kind reading `null` — declared absent rather than declared `{ }` —
+    # and it does so with NO registry, because there is no kind in it to register.
+    test-an-all-null-types-contribution-assembles-with-no-registry = {
+      expr =
+        (assemble {
+          contributions = [
+            {
+              name = "L";
+              vertices = [ (mkId "host" "a") ];
+              types.${mkId "host" "a"} = null;
+            }
+          ];
+        }).nodes.${mkId "host" "a"}.type;
+      expected = null;
+    };
+    # CONTROL against the repair weakening the membership refusal: a null `types` entry for an id no
+    # layer declared is still refused. The check ranges over the RAW contributions, before anything
+    # reaches the fold, so dropping an empty-layer id cannot make a node vanish — an id known only
+    # from a content key never reaches the constructor to be dropped.
+    test-a-null-types-entry-for-an-undeclared-id-is-still-refused = {
+      expr = throws (assemble {
+        contributions = [
+          {
+            name = "L";
+            vertices = [ (mkId "host" "a") ];
+            types.${mkId "host" "ghost"} = null;
+          }
+        ];
+      });
+      expected = true;
+    };
+
+    # ── THE TWO PATHS ANSWER THE SAME THING ──
+    # This is the cell the routing exists for. A framework that wants kinded nodes had to abandon
+    # the protocol and call the constructor itself, which is the duplication this library exists to
+    # remove; the claim is that it no longer has to, and the claim is an EQUALITY over whole records
+    # rather than a sentence about a signature.
+    test-the-toolkit-path-and-the-direct-path-assemble-the-same-record = {
+      expr = (directly corpusTypes) == (throughTheProtocol corpusTypes);
+      expected = true;
+    };
+    # ★ NEGATIVE CONTROL, ON THE SAME COMPARATOR: change ONE node's kind on one side and the
+    # equality reads false. Without it the cell above passes on any comparator that says true.
+    test-seed-the-two-path-comparator-fires-on-one-changed-kind = {
+      expr = (directly corpusTypes) == (throughTheProtocol (corpusTypes // { damask = "bobbin"; }));
+      expected = false;
+    };
+    # The node order both paths publish, stated so the equality above cannot be satisfied by two
+    # sides that are equally empty.
+    test-the-toolkit-path-publishes-the-declared-node-order = {
+      expr = (throughTheProtocol corpusTypes).nodeOrder;
+      expected = corpusIds;
     };
 
     # ── THE THIRD CHANNEL: an ISOLATED GRAPH VERTEX no layer declared is REFUSED ──

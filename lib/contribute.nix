@@ -490,6 +490,18 @@ let
 
   # The per-node ordered fold. `foldLayers` settles ONE record across ordered layers, so it is
   # applied per node id, over exactly the layers that named that id, in contribution order.
+  #
+  # ★ AN ID NO LAYER CONTRIBUTED A VALUE FOR IS ABSENT FROM THE RESULT, NOT PRESENT AND EMPTY. A
+  # `null` entry means "this layer does not contribute", so an id whose every entry is `null` has no
+  # layers — and folding the empty layer list answers `{ }`, which is a VALUE. That difference is
+  # read downstream: the substrate's `types` filter keeps `{ }` and reads it as a declared kind,
+  # telling the author they declared a kind named `{ }` when they declared none. The repair is here
+  # and covers BOTH content families, because the defect is this fold's and not `types`': a special
+  # case for `types` would leave `decls` minting the same present-empty out of an absence.
+  #
+  # It cannot lose a vertex, by construction rather than by survey: `decls` and `types` keys are a
+  # vertex source, but an id known ONLY from a content key is already refused by the declared-
+  # membership check, which ranges over the raw contributions before anything reaches this fold.
   foldContent =
     {
       field,
@@ -498,8 +510,10 @@ let
     }:
     let
       layersFor = id: prelude.filter (l: l != null) (map (c: c.${field}.${id} or null) cs);
-      ids = builtins.attrNames (
-        builtins.foldl' (acc: c: acc // builtins.mapAttrs (_: _: true) c.${field}) { } cs
+      ids = prelude.filter (id: layersFor id != [ ]) (
+        builtins.attrNames (
+          builtins.foldl' (acc: c: acc // builtins.mapAttrs (_: _: true) c.${field}) { } cs
+        )
       );
     in
     prelude.genAttrs ids (
