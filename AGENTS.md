@@ -93,6 +93,9 @@ Entry: `inputs.gen-assemble.lib` (flake) or `import ./lib` (standalone). Both ar
 gen-assemble declares no inputs of its own, so there is nothing to fetch and nothing to pin: the
 substrate arrives INJECTED and is constructed inside the consumer's own evaluation, which is the
 gen↔gen boundary rule's shape. `ci/tests/surface.nix` checks the formals rather than describing them.
+The root `default.nix` also carries its own `wire ? args: import ./lib args` formal, the seam that
+hands `{ prelude, scope, algebra }` to `./lib`; overriding it is how a cell reads the shim's own
+formal-to-path map with nothing fetched and no path restated by hand.
 
 ## Entry points by task
 
