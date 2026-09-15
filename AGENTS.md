@@ -93,9 +93,12 @@ Entry: `inputs.gen-assemble.lib` (flake) or `import ./lib` (standalone). Both ar
 gen-assemble declares no inputs of its own, so there is nothing to fetch and nothing to pin: the
 substrate arrives INJECTED and is constructed inside the consumer's own evaluation, which is the
 gen↔gen boundary rule's shape. `ci/tests/surface.nix` checks the formals rather than describing them.
-The root `default.nix` also carries its own `wire ? args: import ./lib args` formal, the seam that
-hands `{ prelude, scope, algebra }` to `./lib`; overriding it is how a cell reads the shim's own
-formal-to-path map with nothing fetched and no path restated by hand.
+The root `default.nix` also carries its own `wire ? { deps, resolve }: import ./lib deps` formal,
+the seam that hands `{ prelude, scope, algebra }` to `./lib` as `deps` and, on the same record, the
+shim's lock-parameterised `follows` resolver — a formal is an INPUT channel and cannot carry a value
+out, so this argument is the only outward channel the shim has. Overriding `wire` is how a cell reads
+the shim's own formal-to-path map AND its own resolver, with nothing fetched, no path restated and no
+fold transcribed.
 
 ## Entry points by task
 
