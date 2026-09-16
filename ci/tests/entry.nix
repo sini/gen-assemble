@@ -84,7 +84,7 @@ let
   # last-segment shortcut reads a DIFFERENT node, and this repository's ci lock carries several
   # `gen-prelude` nodes at different revisions as well as a `gen-scope-unmet` beside `gen-scope`.
   # Reading the lock is pure data; nothing here fetches.
-  lock = builtins.fromJSON (builtins.readFile ../flake.lock);
+  lock = builtins.fromJSON (builtins.readFile ../../flake.lock);
 
   # ★★ THE RESOLVER IS BOUND OVER ITS LOCK, AND THAT IS WHAT MAKES ITS CONTROL EXPRESSIBLE AT ALL. A
   # `repoOf` closed over THIS lock has no free parameter, so a control could only re-assert the main

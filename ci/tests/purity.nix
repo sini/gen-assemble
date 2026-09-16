@@ -125,12 +125,11 @@ let
   ];
 
   # The live counterpart to `forbidden`: the name this library reaches for where a tether would reach
-  # for nixpkgs. Every gen-assemble source but ONE carries it, and that exclusion is the root
-  # `flake.nix` — this library declares no inputs at all, the substrate arriving injected, so its
-  # flake names no dependency and cannot name this one. The exclusion is what gives the assertion its
-  # teeth: the expected list is a PROPER SUBSET of the manifest, so a read returning one fixed text
-  # for every file lands outside it either way — without the token the list collapses toward empty,
-  # with it the list swells to every source.
+  # for nixpkgs. Before Arm A this excluded exactly one source, the root `flake.nix` — it declared no
+  # inputs, so it named no dependency. Arm A (owner-ruled 2026-09-16: `den-hoag-4dfsv` §4.2) declares
+  # `gen-prelude` as a flake input, so `flake.nix` now names the same substrate the standalone entry
+  # does and carries the token too: the manifest below is the FULL source list, no longer a proper
+  # subset of it.
   liveToken = "prelude";
   liveReads = map (src: src.name) (lib.filter (src: genPrelude.hasInfix liveToken src.code) sources);
 
@@ -197,6 +196,7 @@ in
         "lib/identifier.nix"
         "lib/preconditions.nix"
         "lib/structural-decls.nix"
+        "flake.nix"
         "default.nix"
       ];
     };
