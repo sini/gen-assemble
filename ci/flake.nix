@@ -17,11 +17,20 @@
     # consumer learns nothing from it being green.
     gen-scope.url = "github:sini/gen-scope";
     gen-scope-unmet.url = "github:sini/gen-scope/ff5fe420a2869ae13d0096e2604579c88f23da7a";
+
+    # THE ALGEBRA IS PINNED HERE AND THE PRELUDE IS NOT, WHICH IS A FACT ABOUT THE SUBSTRATE RATHER
+    # THAN A STYLE CHOICE. `gen-scope` still declares a `gen-prelude` input, so the prelude this run
+    # wires is the one the substrate itself resolved; it no longer declares `gen-schema`, so
+    # `gen-scope>gen-schema>gen-algebra` — the route this file used to reach the algebra through —
+    # is a dead path, not a longer one. The library takes an algebra either way, so this run declares
+    # it directly, the same edge the root flake declares.
+    gen-algebra.url = "github:sini/gen-algebra";
   };
 
   outputs =
     inputs@{
       gen-harness,
+      gen-algebra,
       gen-scope,
       gen-scope-unmet,
       ...
@@ -29,7 +38,7 @@
     let
       scope = gen-scope.lib;
       prelude = gen-scope.inputs.gen-prelude.lib;
-      algebra = gen-scope.inputs.gen-schema.inputs.gen-algebra.lib;
+      algebra = gen-algebra.lib;
       genAssemble = import ../lib { inherit prelude scope algebra; };
       # The same library over a substrate that does not meet the preconditions. Nothing is forced
       # here; the suite forces it, which is where the refusal is asserted.

@@ -78,12 +78,12 @@ let
   # expectation while both are wrong.
   shimResolve = seam.resolve;
 
-  # ★ THE ci LOCK, READ AS PURE DATA — and the rule that walks it is NO LONGER TRANSCRIBED HERE:
-  # `shimResolve` above IS `default.nix`'s binding. A direct edge IS the node key; a `follows` value
-  # is a PATH resolved segment by segment from this lock's own root. Never `lock.nodes.<label>` — a
-  # last-segment shortcut reads a DIFFERENT node, and this repository's ci lock carries several
-  # `gen-prelude` nodes at different revisions as well as a `gen-scope-unmet` beside `gen-scope`.
-  # Reading the lock is pure data; nothing here fetches.
+  # ★ THE ROOT LOCK, READ AS PURE DATA — it is the shim's pin source, and the rule that walks it is
+  # NO LONGER TRANSCRIBED HERE: `shimResolve` above IS `default.nix`'s binding. A direct edge IS the
+  # node key; a `follows` value is a PATH resolved segment by segment from this lock's own root.
+  # Never `lock.nodes.<label>` — a last-segment shortcut reads a DIFFERENT node, and this lock
+  # carries three `gen-prelude` nodes at two revisions. Reading the lock is pure data; nothing here
+  # fetches.
   lock = builtins.fromJSON (builtins.readFile ../../flake.lock);
 
   # ★★ THE RESOLVER IS BOUND OVER ITS LOCK, AND THAT IS WHAT MAKES ITS CONTROL EXPRESSIBLE AT ALL. A
@@ -150,11 +150,13 @@ in
   };
 
   # ★★ EVERY WIRED DEPENDENCY RESOLVES, AND RESOLVES TO A NODE OF ITS OWN REPOSITORY. The shim states
-  # its intent as a PATH — neither `gen-prelude` nor `gen-algebra` is a root input of this ci lock,
-  # both are reached THROUGH gen-scope — and this resolves that path through the same lock by the
-  # same rule, then asks which repository the node it lands on belongs to. A path repointed at a
-  # live-but-wrong dependency — the failure a surface comparison and a whole-seam seal both pass —
-  # reds here, naming the formal and the repository it reached.
+  # its intent as a PATH, and the paths are no longer all the same length — `gen-prelude` is still
+  # reached THROUGH gen-scope while `gen-scope` and `gen-algebra` are direct edges of this lock — and
+  # this resolves whatever path the shim declares through the same lock by the same rule, then asks
+  # which repository the node it lands on belongs to. That is what makes the cell indifferent to the
+  # route and not to the answer: a one-segment path and a three-segment one are the same claim here.
+  # A path repointed at a live-but-wrong dependency — the failure a surface comparison and a
+  # whole-seam seal both pass — reds here, naming the formal and the repository it reached.
   #
   # ★ STATED CEILING: `locked.repo` is neither `owner` nor node identity. A same-named repository
   # under another owner passes, and so does a path repointed at a DIFFERENT NODE of the right

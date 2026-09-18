@@ -10,14 +10,23 @@
 # root lock exists and is what `import ./. { }` resolves through — the ci lock is the test graph's
 # own pin source and is no longer read by this file.
 #
-# AND THE DEFAULTS BELOW STILL WALK PATHS, NOT NAMES. `gen-scope` is a direct root input; `prelude`
-# and `algebra` are ALSO now direct root inputs (declared above), but their default segments are
-# left as the multi-hop path THROUGH gen-scope (`gen-scope>gen-prelude`,
-# `gen-scope>gen-schema>gen-algebra`) rather than repointed at the new direct edges — repointing
-# would pin the same dependency twice under two different resolution rules for no discharge. The
-# directly-declared `gen-prelude`/`gen-algebra` root inputs exist for a flake consumer applying this
+# AND THE DEFAULTS BELOW STILL WALK PATHS, NOT NAMES — BUT THE TWO PATHS NO LONGER HAVE THE SAME
+# SHAPE, AND THE ASYMMETRY IS THE STATEMENT. `gen-scope` is a direct root input; `prelude` and
+# `algebra` are ALSO now direct root inputs (declared above). `prelude`'s default segment is left as
+# the multi-hop path THROUGH gen-scope (`gen-scope>gen-prelude`) rather than repointed at the new
+# direct edge — repointing would pin the same dependency twice under two different resolution rules
+# for no discharge, and the two rules AGREE: the walk reaches node `gen-prelude_3` and the direct
+# edge reaches node `gen-prelude`, at one and the same revision.
+#
+# `algebra`'s segment was `gen-scope>gen-schema>gen-algebra` on exactly that reasoning, AND THAT
+# REASONING IS NOW VOID: gen-scope no longer declares a `gen-schema` input, so the route the
+# trade-off preserved does not exist. There is no second resolution rule left to avoid — one live
+# rule and one dead path — so `algebra` is repointed at its direct edge. The eager body below is
+# what made that death loud rather than latent.
+#
+# The directly-declared `gen-prelude` root input still exists for a flake consumer applying this
 # output by name (or an O4-shaped probe simulating one); this file's own standalone resolution never
-# reads them.
+# reads it.
 #
 # `src` AND `dep` ARE FORMALS, NOT `let` BINDINGS, AND THAT IS THE INJECTABLE RESOLVER SEAM. `src`
 # is the only expression here that fetches; everything else reads the lock as data. A caller
@@ -42,7 +51,17 @@ let
       following =
         node: inp:
         let
-          v = (lock.nodes.${node}.inputs or { }).${inp};
+          ins = lock.nodes.${node}.inputs or { };
+          # A MISSING SEGMENT IS A THROW, NOT A DEFAULT — the `or { }` above guards the node's
+          # `inputs` ATTRIBUTE and never the segment lookup, and making the lookup total would turn a
+          # dead path into a silent wrong answer at a consumer instead of a refusal here. The message
+          # names BOTH ENDS because the builtin's own names only one: a segment that stopped
+          # resolving says nothing about which node stopped carrying it.
+          v =
+            if ins ? ${inp} then
+              ins.${inp}
+            else
+              throw "gen-assemble: lock path segment '${inp}' is not an input of node '${node}'";
         in
         if builtins.isString v then v else builtins.foldl' following lock.root v;
     in
@@ -79,12 +98,7 @@ in
       "gen-prelude"
     ]),
   scope ? inputs.gen-scope or (dep [ "gen-scope" ]),
-  algebra ?
-    inputs.gen-algebra or (dep [
-      "gen-scope"
-      "gen-schema"
-      "gen-algebra"
-    ]),
+  algebra ? inputs.gen-algebra or (dep [ "gen-algebra" ]),
 }:
 # THE BODY IS EAGER, AND THAT IS WHAT MAKES THE ENTRY CELL TOTAL RATHER THAN PARTIAL. `forced` forces
 # every wired dependency to WHNF before `./lib` sees it, so a default that cannot resolve is loud AT
