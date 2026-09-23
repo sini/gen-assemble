@@ -20,12 +20,29 @@
 { prelude }:
 let
   separator = ":";
+
+  # ★ EACH DOOR REFUSES EXACTLY WHAT ITS BODY CANNOT TAKE, and names itself (ADR-0025 item 1). A
+  # value that does not interpolate — a record, an integer, a list — used to reach the string
+  # template and abort past `tryEval` naming nothing the caller wrote. The refusal names the TYPE and
+  # never the value, because rendering a value that does not coerce is the very abort it replaces.
+  # `mkId`/`idsOf` build by interpolation, which also takes a path and a record carrying
+  # `__toString` or `outPath`; refusing those would narrow a door that answers on them today.
+  # `parseId` reads with `builtins.split`, which takes a string and nothing else.
+  interpolates =
+    v:
+    builtins.isString v || builtins.isPath v || (builtins.isAttrs v && (v ? __toString || v ? outPath));
+  refuse =
+    who: what: v:
+    throw "gen-assemble.${who}: ${what} is a ${builtins.typeOf v}, expected a string";
+  part =
+    who: what: v:
+    if interpolates v then v else refuse who what v;
 in
 {
   inherit separator;
 
   # `mkId "host" "web1"` ⇒ `"host:web1"`.
-  mkId = type: name: "${type}${separator}${name}";
+  mkId = type: name: "${part "mkId" "the type" type}${separator}${part "mkId" "the name" name}";
 
   # The inverse, for a consumer reading a node id back. Refuses by name rather than answering with a
   # plausible-looking half: a silent `null` here becomes a wrong lookup somewhere downstream.
@@ -41,7 +58,9 @@ in
       # `builtins.split` returns a list interleaved with match groups; the plain fields are the
       # string elements. The prelude carries no `splitString`, and wrapping one here would be this
       # library adding a utility rather than composing one.
-      parts = builtins.filter builtins.isString (builtins.split separator id);
+      parts = builtins.filter builtins.isString (
+        builtins.split separator (if builtins.isString id then id else refuse "parseId" "the identifier" id)
+      );
       # Names may themselves contain the separator; only the FIRST field is the type.
       type = builtins.head parts;
       name = prelude.concatStringsSep separator (prelude.tail parts);
@@ -59,5 +78,14 @@ in
 
   # `idsOf "host" [ "web1" "db1" ]` ⇒ `[ "host:web1" "host:db1" ]`, order preserved because the
   # caller's order is a declaration and this is not the place to lose it.
-  idsOf = type: names: map (n: "${type}${separator}${n}") names;
+  #
+  # The arguments are checked WHOLE before the list is returned: a per-element guard leaves the list
+  # lazy, so its refusal would reach only a caller that forces the element, and a caller reading the
+  # length would be answered about a list that cannot be built. The type is checked once there is a
+  # name to join it to; with none, the answer is `[ ]` whatever the type, as it is today.
+  idsOf =
+    type: names:
+    builtins.seq (builtins.all (
+      n: builtins.seq (part "idsOf" "the type" type) (builtins.seq (part "idsOf" "a name" n) true)
+    ) names) (map (n: "${type}${separator}${n}") names);
 }

@@ -23,7 +23,12 @@
 # passes against a message that says something else after it — which would make this cell agree with
 # the very rewording it exists to catch. The pattern is anchored at both ends and built by ESCAPING
 # THE LITERAL TEXT rather than by hand.
-{ genAssembleUnmet, lib, ... }:
+{
+  genAssemble,
+  genAssembleUnmet,
+  lib,
+  ...
+}:
 let
   exactly = msg: "^" + lib.escapeRegex msg + "$";
 
@@ -43,6 +48,32 @@ let
 in
 {
   flake.testsError = {
+    # ── THE IDENTIFIER DOORS (den-hoag-bkdkg) ──
+    # A record handed where a name goes — the node VALUE in place of its identifier — used to abort
+    # past `tryEval` with the evaluator's coercion error. Each door now refuses it by its own name.
+    # `idsOf` is read through `length` because the refusal must reach a caller that never forces an
+    # element; a guard living inside the elements would pass a deep-forcing cell and fail this one.
+    test-mkId-refuses-a-record-type-by-name = {
+      expr = genAssemble.mkId { name = "a"; } "web1";
+      expectedError.msg = exactly "gen-assemble.mkId: the type is a set, expected a string";
+    };
+    test-mkId-refuses-a-record-name-by-name = {
+      expr = genAssemble.mkId "host" { name = "a"; };
+      expectedError.msg = exactly "gen-assemble.mkId: the name is a set, expected a string";
+    };
+    test-parseId-refuses-a-record-by-name = {
+      expr = genAssemble.parseId { name = "a"; };
+      expectedError.msg = exactly "gen-assemble.parseId: the identifier is a set, expected a string";
+    };
+    test-idsOf-refuses-a-record-name-before-any-element-is-read = {
+      expr = builtins.length (genAssemble.idsOf "host" [ { name = "a"; } ]);
+      expectedError.msg = exactly "gen-assemble.idsOf: a name is a set, expected a string";
+    };
+    test-idsOf-refuses-a-record-type-by-name = {
+      expr = builtins.length (genAssemble.idsOf { name = "a"; } [ "web1" ]);
+      expectedError.msg = exactly "gen-assemble.idsOf: the type is a set, expected a string";
+    };
+
     test-unmet-substrate-refusal-names-the-record = {
       expr = genAssembleUnmet.assemble { contributions = [ ]; };
       expectedError.msg = exactly unmetSubstrateNamesTheRecord;
