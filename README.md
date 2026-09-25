@@ -248,10 +248,15 @@ acceptance surface for the contribution protocol, the identifier convention, the
 declarations, and the precondition refusals).
 
 ```bash
-nix flake check ./ci                     # what CI runs
-nix-unit --flake ./ci#tests              # run everything
-nix-unit --flake ./ci#tests.purity       # a single suite
+nix develop ./ci --command ci            # run everything, guarded
+nix develop ./ci --command ci purity  # a single suite, guarded
+nix flake check ./ci                     # what CI runs; unguarded
+nix-unit --flake ./ci#tests              # run everything; unguarded
 ```
+
+`ci` refuses when anything under a declared read root is unknown to git — any extension or name,
+`_`-prefixed included — and the remedy is `git add` or a move. The unguarded forms read a
+git-filtered copy of the tree, so an untracked cell is silently absent and the run stays green.
 
 The surface suite is a **tripwire, not a wall**: a new export fails it, and the author states the
 new surface in `ci/tests/surface.nix`, in `AGENTS.md` and in the canonical reference in the same
