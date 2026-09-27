@@ -365,11 +365,18 @@ let
   undeclaredGraphVertices =
     contributions: undeclaredGraphVerticesOf (prelude.imap0 normalise contributions);
 
+  # den-hoag-7gp66 P1: MIXED door (`contributions` required, `strategies` optional), same reason
+  # as `assemble` above it on the surface — see that door's comment.
   union =
-    {
-      contributions,
-      strategies ? { },
-    }:
+    args:
+    let
+      checked = prelude.checkOptions "gen-assemble.union" [
+        "contributions"
+        "strategies"
+      ] (prelude.checkRequired "gen-assemble.union" [ "contributions" ] args);
+      contributions = checked.contributions;
+      strategies = checked.strategies or { };
+    in
     let
       cs = prelude.imap0 normalise contributions;
 

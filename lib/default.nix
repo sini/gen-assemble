@@ -63,13 +63,23 @@ let
   # declares itself total over, unhonourable one layer down. Nor is it derived from the union'd
   # `types`: auto-registering every declared spelling is the free-form kind set the substrate's
   # registry was created to close, and it would make a typo a kind.
+  # den-hoag-7gp66 P1: a native closed formal aborts past `tryEval` on an unknown or a missing
+  # field (ADR-0025 item 1), so the door takes a bare `args:` and checks it explicitly instead —
+  # MIXED (`contributions` required, the rest optional), closed on both axes.
   assemble =
-    {
-      contributions,
-      strategies ? { },
-      strict ? true,
-      kinds ? null,
-    }:
+    args:
+    let
+      checked = prelude.checkOptions "gen-assemble.assemble" [
+        "contributions"
+        "strategies"
+        "strict"
+        "kinds"
+      ] (prelude.checkRequired "gen-assemble.assemble" [ "contributions" ] args);
+      contributions = checked.contributions;
+      strategies = checked.strategies or { };
+      strict = checked.strict or true;
+      kinds = checked.kinds or null;
+    in
     preconditions.require (
       scope.buildRoots (
         contribute.union { inherit contributions strategies; } // { inherit strict kinds; }

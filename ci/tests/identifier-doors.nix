@@ -35,16 +35,14 @@
         name = "web1";
       };
     };
-    # The guards live in the door bodies, never in a wrapper at the export, and a wrapper is
-    # detectable: it erases the formals a caller reads. `assemble` is the export that has formals.
-    test-assemble-keeps-its-published-formals = {
+    # P1 (den-hoag-7gp66) moved the guard from the native formal into an explicit
+    # `checkOptions`/`checkRequired` binding in the door body, so the export is now a bare
+    # positional `args:` and `functionArgs` on it is empty by construction. A regression back to a
+    # native closed formal — the shape that aborted past `tryEval` — would show up here as a
+    # non-empty record; the "still refuses catchably" half is `ci/tests/door-checks.nix`'s job.
+    test-assemble-has-no-native-closed-formal = {
       expr = builtins.functionArgs genAssemble.assemble;
-      expected = {
-        contributions = false;
-        kinds = true;
-        strategies = true;
-        strict = true;
-      };
+      expected = { };
     };
   };
 }
