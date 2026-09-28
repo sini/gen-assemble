@@ -212,7 +212,10 @@ genAssemble.assemble {
       # The members this layer declares. Every id an edge below names must be declared HERE or by
       # another contribution — an undeclared endpoint is refused, naming this layer and the id.
       vertices = [ "host:web1" "host:db1" "env:prod" ];
-      parentGraph = scope.edge "host:web1" "env:prod";
+      parentGraph = scope.edge {
+        from = "host:web1";
+        to = "env:prod";
+      };
       decls."host:web1" = { tier = "base"; };
       types."host:web1" = "host"; # the per-node FACT, declared in the vocabulary below
     }
@@ -223,7 +226,7 @@ genAssemble.assemble {
   # layer — a per-layer registry would need those relations merged with no order semantics to settle
   # the merge. Omit it and a contribution declaring no kind assembles unchanged; declare a kind
   # without it, or a spelling it does not carry, and the substrate refuses by name.
-  kinds = scope.mkKinds [ (scope.mkKind { name = "host"; }) ];
+  kinds = scope.mkKinds [ (scope.mkKind { } "host") ];
 }
 ```
 

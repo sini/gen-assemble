@@ -28,11 +28,17 @@ let
     hasConstructor
     && !(builtins.tryEval (
       builtins.deepSeq (scope.buildRoots {
-        parentGraph = scope.edge "a" "root";
+        parentGraph = scope.edge {
+          from = "a";
+          to = "root";
+        };
         edgeGraphs = [
           {
             label = "P";
-            graph = scope.edge "a" "HIJACKED";
+            graph = scope.edge {
+              from = "a";
+              to = "HIJACKED";
+            };
           }
         ];
       }) 1

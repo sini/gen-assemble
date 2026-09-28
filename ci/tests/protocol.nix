@@ -40,11 +40,17 @@ let
       (mkId "env" "prod")
       (mkId "group" "www")
     ];
-    parentGraph = scope.edge (mkId "host" "web1") (mkId "env" "prod");
+    parentGraph = scope.edge {
+      from = (mkId "host" "web1");
+      to = (mkId "env" "prod");
+    };
     edgeGraphs = [
       {
         label = "M";
-        graph = scope.edge (mkId "host" "web1") (mkId "group" "www");
+        graph = scope.edge {
+          from = (mkId "host" "web1");
+          to = (mkId "group" "www");
+        };
       }
     ];
     decls = {
@@ -63,11 +69,17 @@ let
       (mkId "host" "db1")
       (mkId "role" "primary")
     ];
-    parentGraph = scope.edge (mkId "host" "db1") (mkId "env" "prod");
+    parentGraph = scope.edge {
+      from = (mkId "host" "db1");
+      to = (mkId "env" "prod");
+    };
     edgeGraphs = [
       {
         label = "R";
-        graph = scope.edge (mkId "host" "db1") (mkId "role" "primary");
+        graph = scope.edge {
+          from = (mkId "host" "db1");
+          to = (mkId "role" "primary");
+        };
       }
     ];
     decls = {
@@ -115,7 +127,10 @@ let
       (mkId "host" "a")
       (mkId "host" "b")
     ];
-    parentGraph = scope.edge (mkId "host" "a") (mkId "host" "b");
+    parentGraph = scope.edge {
+      from = (mkId "host" "a");
+      to = (mkId "host" "b");
+    };
   };
   # The same contribution with one endpoint's declaration dropped — one per side, because reading
   # only `to` and reading both are two different libraries and a suite that seeds one side cannot
@@ -137,7 +152,10 @@ let
   referrer = {
     name = "referrer";
     vertices = [ (mkId "host" "w") ];
-    parentGraph = scope.edge (mkId "host" "w") (mkId "env" "prod");
+    parentGraph = scope.edge {
+      from = (mkId "host" "w");
+      to = (mkId "env" "prod");
+    };
   };
 
   # One contribution per EDGE FAMILY, each missing the same declaration, so the refusal is read
@@ -146,7 +164,10 @@ let
   importer = {
     name = "importer";
     vertices = [ (mkId "host" "a") ];
-    importGraph = scope.edge (mkId "host" "a") (mkId "profile" "shared");
+    importGraph = scope.edge {
+      from = (mkId "host" "a");
+      to = (mkId "profile" "shared");
+    };
   };
   labeller = {
     name = "labeller";
@@ -154,7 +175,10 @@ let
     edgeGraphs = [
       {
         label = "X";
-        graph = scope.edge (mkId "host" "a") (mkId "group" "ops");
+        graph = scope.edge {
+          from = (mkId "host" "a");
+          to = (mkId "group" "ops");
+        };
       }
     ];
   };
@@ -167,7 +191,10 @@ let
     vertices = [ (mkId "host" "b") ];
     parentGraph = scope.overlays [
       (scope.vertex (mkId "host" "a"))
-      (scope.edge (mkId "host" "a") (mkId "host" "b"))
+      (scope.edge {
+        from = (mkId "host" "a");
+        to = (mkId "host" "b");
+      })
     ];
   };
 
@@ -271,7 +298,7 @@ let
   # node `host`, so ONE registry serves them both, and the unregistered-spelling cell reuses it
   # rather than growing a second: an unregistered kind is a spelling this registry does not carry,
   # which a one-kind registry states more directly than a second registry would.
-  hostKinds = scope.mkKinds [ (scope.mkKind { name = "host"; }) ];
+  hostKinds = scope.mkKinds [ (scope.mkKind { } "host") ];
 
   # C1-SHAPED, and taken from the corpus's own primary scope rather than invented: three kinds, a
   # coordinate node among them, every node carrying a kind. This is the fixture for the two-paths
@@ -295,7 +322,7 @@ let
     "seam:bombazine:faille" = "seam";
   };
   corpusKinds = scope.mkKinds (
-    map (n: scope.mkKind { name = n; }) [
+    map (n: scope.mkKind { } n) [
       "thimble"
       "bobbin"
       "seam"
@@ -393,7 +420,13 @@ in
     # ARMED: the predicate can tell graphs apart, so the identity above is not a comparison that
     # could not have failed.
     test-seed-a-different-graph-is-not-equal-under-the-same-predicate = {
-      expr = asSets merged.parentGraph == asSets (scope.edge "x" "y");
+      expr =
+        asSets merged.parentGraph == asSets (
+          scope.edge {
+            from = "x";
+            to = "y";
+          }
+        );
       expected = false;
     };
 
@@ -425,7 +458,10 @@ in
               edgeGraphs = [
                 {
                   label = "P";
-                  graph = scope.edge (mkId "host" "db1") (mkId "env" "prod");
+                  graph = scope.edge {
+                    from = (mkId "host" "db1");
+                    to = (mkId "env" "prod");
+                  };
                 }
               ];
             }
