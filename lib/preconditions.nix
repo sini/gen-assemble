@@ -78,24 +78,24 @@ let
   # comes first and stands alone; the properties it gates are only asserted where they can be read.
   entryCheck = {
     met = hasConstructor;
-    record = "den-hoag-u1sf";
+    record = "publishes-buildRoots";
     property = "the substrate must publish `buildRoots` — a pin predating it carries the retired constructor, whose result is a bare node map with no declared order in it, so nothing downstream can read an order that was never returned";
   };
 
   gatedChecks = [
     {
       met = importRelationIsStructural;
-      record = "den-hoag-aznm";
+      record = "imports-is-structural";
       property = "`structural \"imports\"` must be true — the relation the resolver traverses must be classified structural, or it is eligible for stale warm reuse and the import relation is served from a prior evaluation with nothing said";
     }
     {
       met = reservedLabelIsRefused;
-      record = "den-hoag-r9ne";
+      record = "reserved-label-refused";
       property = "a contribution offering the reserved label `P` must be refused by the constructor — otherwise the declared parent graph is silently displaced by the caller's label";
     }
     {
       met = declaredOrderSurvives;
-      record = "den-hoag-u1sf";
+      record = "declared-order-survives";
       property = "the declared vertex order must survive the constructor — a two-vertex probe declared `b` then `a` must answer `[ \"b\" \"a\" ]`, not the codepoint `[ \"a\" \"b\" ]`";
     }
   ];

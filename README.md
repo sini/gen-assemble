@@ -34,7 +34,7 @@ the purity invariant with its own positive control, and CI wired to the shared g
 The three substrate defects this library was specified against have all landed, and **the refusal
 they motivated is content that stayed**: `substratePreconditions` publishes the properties the
 assembly depends on, and an assembly over a substrate failing any of them refuses to evaluate by
-name, naming the record. Two of those three failed *silently* — a library that built green against
+name, naming its `record` key. Two of those three failed *silently* — a library that built green against
 them would have handed a consumer a wrong answer with no diagnostic anywhere — which is why the
 check is a construct rather than a note in a changelog, and why the suite arms it against a real
 substrate pin on which it genuinely fails.

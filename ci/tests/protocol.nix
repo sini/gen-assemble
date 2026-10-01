@@ -1374,7 +1374,7 @@ in
     # another and this cell exists to say which.
     test-the-unmet-substrate-names-the-failing-properties = {
       expr = map (c: c.record) (builtins.filter (c: !c.met) genAssembleUnmet.substratePreconditions);
-      expected = [ "den-hoag-u1sf" ];
+      expected = [ "publishes-buildRoots" ];
     };
     # ★ And the checks that pin cannot ANSWER are not reported as failures. On that substrate the
     # other two properties were in fact repaired; probing them through a constructor that is not
@@ -1382,16 +1382,16 @@ in
     # reading is the entry alone.
     test-an-unevaluable-probe-is-not-reported-as-a-failing-property = {
       expr = map (c: c.record) genAssembleUnmet.substratePreconditions;
-      expected = [ "den-hoag-u1sf" ];
+      expected = [ "publishes-buildRoots" ];
     };
     # CONTROL: on the met substrate all four are read and all four hold.
     test-control-the-met-substrate-reads-every-check = {
       expr = map (c: c.record) genAssemble.substratePreconditions;
       expected = [
-        "den-hoag-u1sf"
-        "den-hoag-aznm"
-        "den-hoag-r9ne"
-        "den-hoag-u1sf"
+        "publishes-buildRoots"
+        "imports-is-structural"
+        "reserved-label-refused"
+        "declared-order-survives"
       ];
     };
     test-control-the-met-substrate-has-no-unmet-precondition = {

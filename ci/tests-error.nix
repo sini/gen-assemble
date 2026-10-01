@@ -34,14 +34,14 @@ let
 
   # `genAssembleUnmet` is this library over `gen-scope` pinned one commit before the declared vertex
   # order landed — at that pin the substrate does not publish `buildRoots` at all, so the ENTRY check
-  # (`den-hoag-u1sf`) is the one unmet precondition, and the three checks it gates are correctly
+  # (`publishes-buildRoots`) is the one unmet precondition, and the three checks it gates are correctly
   # UNEVALUATED rather than reported as additional failures (`ci/tests/protocol.nix`'s own
   # `test-an-unevaluable-probe-is-not-reported-as-a-failing-property` is the live control for that
   # half). `require` never forces the contribution list before it throws — the check is a property of
   # the pinned substrate, not of what is being assembled — so an empty list reaches the same message.
   unmetSubstrateNamesTheRecord =
     "gen-assemble: the pinned gen-scope does not meet 1 of this library's 1 substrate preconditions, "
-    + "so an assembly built on it would be wrong with no diagnostic. den-hoag-u1sf: the substrate "
+    + "so an assembly built on it would be wrong with no diagnostic. publishes-buildRoots: the substrate "
     + "must publish `buildRoots` — a pin predating it carries the retired constructor, whose result "
     + "is a bare node map with no declared order in it, so nothing downstream can read an order that "
     + "was never returned. Move the `scope` pin to a substrate where these hold.";
