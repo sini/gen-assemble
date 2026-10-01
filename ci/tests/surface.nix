@@ -44,7 +44,7 @@ let
     lib.head (lib.splitString "```" (lib.elemAt (lib.splitString "```json" agentsSheet) 1))
   );
 
-  mentions = name: lib.hasInfix "`${name}`" agentsSheet;
+  mentions = name: prelude.hasInfix "`${name}`" agentsSheet;
 in
 {
   flake.tests.surface = {
