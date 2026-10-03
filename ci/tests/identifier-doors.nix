@@ -35,14 +35,19 @@
         name = "web1";
       };
     };
-    # P1 (den-hoag-7gp66) moved the guard from the native formal into an explicit
-    # `checkOptions`/`checkRequired` binding in the door body, so the export is now a bare
-    # positional `args:` and `functionArgs` on it is empty by construction. A regression back to a
-    # native closed formal — the shape that aborted past `tryEval` — would show up here as a
-    # non-empty record; the "still refuses catchably" half is `ci/tests/door-checks.nix`'s job.
+    # P2 (den-hoag-7gp66) publishes the export as a `prelude.door`: a functor carrying its contract,
+    # never a native lambda. A regression back to a native closed formal — the shape that aborted
+    # past `tryEval` — would read `true` / `false` here; the "still refuses catchably" half is
+    # `ci/tests/door-checks.nix`'s job.
     test-assemble-has-no-native-closed-formal = {
-      expr = builtins.functionArgs genAssemble.assemble;
-      expected = { };
+      expr = {
+        lambda = builtins.isFunction genAssemble.assemble;
+        door = genAssemble.assemble ? __contract;
+      };
+      expected = {
+        lambda = false;
+        door = true;
+      };
     };
   };
 }

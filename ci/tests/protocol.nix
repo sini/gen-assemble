@@ -339,45 +339,32 @@ let
     };
   throughTheProtocol =
     types:
-    assemble {
-      contributions = [
-        {
-          name = "corpus";
-          vertices = corpusIds;
-          decls = corpusDecls;
-          inherit types;
-        }
-      ];
-      kinds = corpusKinds;
-    };
+    assemble { kinds = corpusKinds; } [
+      {
+        name = "corpus";
+        vertices = corpusIds;
+        decls = corpusDecls;
+        inherit types;
+      }
+    ];
 
-  merged = union {
-    contributions = [
-      base
-      override
-    ];
-  };
-  reversed = union {
-    contributions = [
-      override
-      base
-    ];
-  };
+  merged = union { } [
+    base
+    override
+  ];
+  reversed = union { } [
+    override
+    base
+  ];
 
-  built = assemble {
-    contributions = [
-      base
-      override
-    ];
-    kinds = hostKinds;
-  };
-  builtReversed = assemble {
-    contributions = [
-      override
-      base
-    ];
-    kinds = hostKinds;
-  };
+  built = assemble { kinds = hostKinds; } [
+    base
+    override
+  ];
+  builtReversed = assemble { kinds = hostKinds; } [
+    override
+    base
+  ];
 
   # Denotational graph equality: `overlay` concatenates, so Mokhov's axioms hold up to the graph's
   # denotation and a LITERAL list comparison fails on a correct implementation.
@@ -449,8 +436,8 @@ in
     # UNDECLARED MEMBERSHIP before the label was ever read, and the cell — which asks only whether
     # something threw — would go on passing while saying nothing about the reservation.
     test-a-reserved-label-is-refused = {
-      expr = throws (union {
-        contributions = [
+      expr = throws (
+        union { } [
           base
           (
             override
@@ -466,29 +453,27 @@ in
               ];
             }
           )
-        ];
-      });
+        ]
+      );
       expected = true;
     };
     test-a-duplicate-label-is-refused = {
-      expr = throws (union {
-        contributions = [
+      expr = throws (
+        union { } [
           base
           (override // { inherit (base) edgeGraphs; })
-        ];
-      });
+        ]
+      );
       expected = true;
     };
     # CONTROL for both: an ordinary, distinct label passes in the same run.
     test-control-distinct-ordinary-labels-pass = {
       expr =
         builtins.length
-          (union {
-            contributions = [
-              base
-              override
-            ];
-          }).edgeGraphs;
+          (union { } [
+            base
+            override
+          ]).edgeGraphs;
       expected = 2;
     };
     # ★ AND THE COLLISION DIAGNOSTIC CARRIES BOTH CONTRIBUTORS — asserted on the NAMES, because a
@@ -526,14 +511,12 @@ in
     test-a-declared-vertex-becomes-a-node = {
       expr =
         builtins.attrNames
-          (assemble {
-            contributions = [
-              {
-                name = "solo";
-                vertices = [ (mkId "host" "solo") ];
-              }
-            ];
-          }).nodes;
+          (assemble { } [
+            {
+              name = "solo";
+              vertices = [ (mkId "host" "solo") ];
+            }
+          ]).nodes;
       expected = [ (mkId "host" "solo") ];
     };
     # Two layers declaring one id declare ONE member. Asserted DENOTATIONALLY, because overlay
@@ -542,12 +525,10 @@ in
     test-declared-members-union-as-a-set = {
       expr =
         (asSets
-          (union {
-            contributions = [
-              membersA
-              membersB
-            ];
-          }).parentGraph
+          (union { } [
+            membersA
+            membersB
+          ]).parentGraph
         ).vertices;
       expected = [
         (mkId "host" "a")
@@ -560,30 +541,24 @@ in
     test-the-declared-member-set-is-order-independent = {
       expr =
         asSets
-          (union {
-            contributions = [
-              membersA
-              membersB
-            ];
-          }).parentGraph == asSets
-          (union {
-            contributions = [
-              membersB
-              membersA
-            ];
-          }).parentGraph;
+          (union { } [
+            membersA
+            membersB
+          ]).parentGraph == asSets
+          (union { } [
+            membersB
+            membersA
+          ]).parentGraph;
       expected = true;
     };
     # At the assembly, where the node ORDER is a list and therefore the one place a duplicate could
     # survive: three nodes, the shared id once, in the order the layers declared it.
     test-the-declared-members-reach-the-assembly-as-one-node-each = {
       expr =
-        (assemble {
-          contributions = [
-            membersA
-            membersB
-          ];
-        }).nodeOrder;
+        (assemble { } [
+          membersA
+          membersB
+        ]).nodeOrder;
       expected = [
         (mkId "host" "a")
         (mkId "host" "shared")
@@ -596,27 +571,21 @@ in
     # edge into its node set, so an undeclared endpoint is a node the relation invents and the
     # assembly widens with nothing said.
     test-an-edge-to-an-undeclared-id-is-refused = {
-      expr = throws (union {
-        contributions = [ missingTarget ];
-      });
+      expr = throws (union { } [ missingTarget ]);
       expected = true;
     };
     # ★ AND AN EDGE *FROM* AN UNDECLARED ID IS REFUSED THE SAME WAY. The hazard is usually stated of
     # targets, but the node set unions `from` and `to` alike, so a check reading one side would
     # leave the other silently open. This is the cell that tells the total form from the narrow one.
     test-an-edge-from-an-undeclared-id-is-refused = {
-      expr = throws (union {
-        contributions = [ missingSource ];
-      });
+      expr = throws (union { } [ missingSource ]);
       expected = true;
     };
     # CONTROL: the same contribution declaring both endpoints passes, in the same run and through
     # the same predicate. Without it the two refusals above are equally consistent with a union that
     # refuses whatever carries an edge.
     test-control-a-layer-declaring-both-endpoints-passes = {
-      expr = throws (union {
-        contributions = [ selfContained ];
-      });
+      expr = throws (union { } [ selfContained ]);
       expected = false;
     };
 
@@ -700,30 +669,28 @@ in
     # One layer declares a member and another relates it. The refusal attributes to the layer that
     # carried the edge, which is a different question from whose declaration satisfies it.
     test-a-layer-may-relate-what-another-layer-declared = {
-      expr = throws (union {
-        contributions = [
+      expr = throws (
+        union { } [
           declarer
           referrer
-        ];
-      });
+        ]
+      );
       expected = false;
     };
     # And that legality is not an artefact of the declaring layer coming first.
     test-the-cross-contribution-reference-holds-in-either-order = {
-      expr = throws (union {
-        contributions = [
+      expr = throws (
+        union { } [
           referrer
           declarer
-        ];
-      });
+        ]
+      );
       expected = false;
     };
     # ARMED: the referrer ALONE is refused, so the two cells above are not passing on a check that
     # never looks at the endpoint.
     test-seed-the-referrer-alone-is-refused = {
-      expr = throws (union {
-        contributions = [ referrer ];
-      });
+      expr = throws (union { } [ referrer ]);
       expected = true;
     };
 
@@ -765,20 +732,13 @@ in
     # property, and a soundness refusal an evaluation-order knob could switch off is the silence the
     # refusal exists to close.
     test-strict-false-does-not-disable-the-membership-refusal = {
-      expr = throws (assemble {
-        contributions = [ missingTarget ];
-        strict = false;
-      });
+      expr = throws (assemble { strict = false; } [ missingTarget ]);
       expected = true;
     };
     # CONTROL: `strict = false` is a live setting that assembles, so the cell above is not passing
     # on a knob that refuses everything.
     test-control-strict-false-assembles-a-declared-contribution = {
-      expr =
-        (assemble {
-          contributions = [ selfContained ];
-          strict = false;
-        }).nodeOrder;
+      expr = (assemble { strict = false; } [ selfContained ]).nodeOrder;
       expected = [
         (mkId "host" "a")
         (mkId "host" "b")
@@ -789,12 +749,12 @@ in
     # edges naming nodes nobody declared. The cell reads `decls`, which the offending edge does not
     # appear in at all.
     test-reading-only-the-content-half-is-refused-too = {
-      expr = throws (union { contributions = [ missingTarget ]; }).decls;
+      expr = throws (union { } [ missingTarget ]).decls;
       expected = true;
     };
     # CONTROL: the same read on a declared union answers rather than throwing.
     test-control-reading-the-content-half-of-a-declared-union-passes = {
-      expr = throws (union { contributions = [ selfContained ]; }).decls;
+      expr = throws (union { } [ selfContained ]).decls;
       expected = false;
     };
     # CONTROL against over-refusal, on the suite's own working pair: a clean assembly — including
@@ -815,24 +775,18 @@ in
     # content key naming an undeclared id", and a suite that seeds one record is a suite about that
     # record.
     test-a-decls-entry-for-an-undeclared-id-is-refused = {
-      expr = throws (union {
-        contributions = [ ghostDecl ];
-      });
+      expr = throws (union { } [ ghostDecl ]);
       expected = true;
     };
     test-a-types-entry-for-an-undeclared-id-is-refused = {
-      expr = throws (union {
-        contributions = [ phantomType ];
-      });
+      expr = throws (union { } [ phantomType ]);
       expected = true;
     };
     # CONTROL: the same contribution with content for its DECLARED member passes, in the same run
     # and through the same predicate. Without it the two refusals above are equally consistent with
     # a union that refuses whatever carries content at all.
     test-control-content-for-a-declared-member-passes = {
-      expr = throws (union {
-        contributions = [ contentDeclared ];
-      });
+      expr = throws (union { } [ contentDeclared ]);
       expected = false;
     };
 
@@ -866,38 +820,34 @@ in
     # `nodeOrder` was `["host:a", "host:GHOST", "host:PHANTOM"]` — two nodes nobody declared,
     # admitted through the front door on a green run.
     test-content-borne-ghost-nodes-no-longer-reach-the-assembly = {
-      expr = throws (assemble {
-        contributions = [ contentBorneGhosts ];
-      });
+      expr = throws (assemble { } [ contentBorneGhosts ]);
       expected = true;
     };
 
     # ── CROSS-CONTRIBUTION CONTENT IS LEGAL: the union is GLOBAL on this half too ──
     test-a-layer-may-supply-content-for-what-another-layer-declared = {
-      expr = throws (union {
-        contributions = [
+      expr = throws (
+        union { } [
           memberOwner
           contentSupplier
-        ];
-      });
+        ]
+      );
       expected = false;
     };
     # And that legality is not an artefact of the declaring layer coming first.
     test-the-cross-contribution-content-holds-in-either-order = {
-      expr = throws (union {
-        contributions = [
+      expr = throws (
+        union { } [
           contentSupplier
           memberOwner
-        ];
-      });
+        ]
+      );
       expected = false;
     };
     # ARMED: the supplier ALONE is refused, so the two cells above are not passing on a check that
     # never looks at a content key.
     test-seed-the-content-supplier-alone-is-refused = {
-      expr = throws (union {
-        contributions = [ contentSupplier ];
-      });
+      expr = throws (union { } [ contentSupplier ]);
       expected = true;
     };
 
@@ -906,10 +856,7 @@ in
     # and a soundness refusal an evaluation-order knob can switch off is the silence it exists to
     # close.
     test-strict-false-does-not-disable-the-content-key-refusal = {
-      expr = throws (assemble {
-        contributions = [ ghostDecl ];
-        strict = false;
-      });
+      expr = throws (assemble { strict = false; } [ ghostDecl ]);
       expected = true;
     };
     # CONTROL: `strict = false` assembles the same contribution's DECLARED content, so the cell
@@ -917,10 +864,9 @@ in
     test-control-strict-false-assembles-declared-content = {
       expr =
         (assemble {
-          contributions = [ contentDeclared ];
           kinds = hostKinds;
           strict = false;
-        }).nodeOrder;
+        } [ contentDeclared ]).nodeOrder;
       expected = [ (mkId "host" "a") ];
     };
 
@@ -928,12 +874,12 @@ in
     # reads `decls`. This one reads `parentGraph`, the half the offending entry does not appear in
     # at all, so a guard bound to the content keys alone would let it through.
     test-reading-only-the-shape-half-is-refused-for-a-content-key-too = {
-      expr = throws (union { contributions = [ ghostDecl ]; }).parentGraph;
+      expr = throws (union { } [ ghostDecl ]).parentGraph;
       expected = true;
     };
     # CONTROL: the same read on a declared union answers rather than throwing.
     test-control-reading-the-shape-half-of-a-declared-union-passes = {
-      expr = throws (union { contributions = [ contentDeclared ]; }).parentGraph;
+      expr = throws (union { } [ contentDeclared ]).parentGraph;
       expected = false;
     };
     # CONTROL against over-refusal on the suite's own working pair, whose `decls` and `types` are
@@ -953,61 +899,57 @@ in
     # assembly — and `types` is the per-node FACT a layer declares in it.
     test-a-declared-kind-reaches-the-assembled-node = {
       expr =
-        (assemble {
-          contributions = [
-            {
-              name = "L";
-              vertices = [ (mkId "host" "a") ];
-              types.${mkId "host" "a"} = "host";
-            }
-          ];
-          kinds = hostKinds;
-        }).nodes.${mkId "host" "a"}.type;
+        (assemble { kinds = hostKinds; } [
+          {
+            name = "L";
+            vertices = [ (mkId "host" "a") ];
+            types.${mkId "host" "a"} = "host";
+          }
+        ]).nodes.${mkId "host" "a"}.type;
       expected = "host";
     };
     # ★ AND THE REFUSAL IS NOT TRADED AWAY FOR IT. Omitting the registry while declaring a kind is
     # still refused, so routing the argument introduces no silence of its own — which is the
     # property that would have been lost had `kinds` defaulted to an empty registry instead of null.
     test-a-declared-kind-without-a-registry-is-still-refused = {
-      expr = throws (assemble {
-        contributions = [
+      expr = throws (
+        assemble { } [
           {
             name = "L";
             vertices = [ (mkId "host" "a") ];
             types.${mkId "host" "a"} = "host";
           }
-        ];
-      });
+        ]
+      );
       expected = true;
     };
     # And the vocabulary BINDS: a spelling the registry does not carry is refused even though a
     # registry was supplied, so the cell above is not passing on "any registry will do".
     test-an-unregistered-kind-is-refused-against-the-supplied-registry = {
-      expr = throws (assemble {
-        contributions = [
+      expr = throws (
+        assemble { kinds = hostKinds; } [
           {
             name = "L";
             vertices = [ (mkId "host" "a") ];
             types.${mkId "host" "a"} = "typo";
           }
-        ];
-        kinds = hostKinds;
-      });
+        ]
+      );
       expected = true;
     };
     # ★ THE VOCABULARY IS NOT AN EIGHTH CONTRIBUTION KEY, and this is where that is asserted rather
     # than assumed: offered ON a contribution it is refused by name against the same seven. The
     # totality claim the protocol publishes is unchanged by the routing.
     test-kinds-offered-as-a-contribution-key-is-still-refused = {
-      expr = throws (union {
-        contributions = [
+      expr = throws (
+        union { } [
           {
             name = "L";
             vertices = [ (mkId "host" "a") ];
             kinds = hostKinds;
           }
-        ];
-      });
+        ]
+      );
       expected = true;
     };
 
@@ -1020,28 +962,24 @@ in
     # present-empty out of an absence.
     test-an-all-null-types-entry-leaves-the-folded-record = {
       expr =
-        (union {
-          contributions = [
-            {
-              name = "L";
-              vertices = [ (mkId "host" "a") ];
-              types.${mkId "host" "a"} = null;
-            }
-          ];
-        }).types;
+        (union { } [
+          {
+            name = "L";
+            vertices = [ (mkId "host" "a") ];
+            types.${mkId "host" "a"} = null;
+          }
+        ]).types;
       expected = { };
     };
     test-an-all-null-decls-entry-leaves-the-folded-record = {
       expr =
-        (union {
-          contributions = [
-            {
-              name = "L";
-              vertices = [ (mkId "host" "a") ];
-              decls.${mkId "host" "a"} = null;
-            }
-          ];
-        }).decls;
+        (union { } [
+          {
+            name = "L";
+            vertices = [ (mkId "host" "a") ];
+            decls.${mkId "host" "a"} = null;
+          }
+        ]).decls;
       expected = { };
     };
     # ★ AND THE ASSEMBLY IS THE REASON THE FOLD WAS REPAIRED: the all-null contribution now
@@ -1049,15 +987,13 @@ in
     # and it does so with NO registry, because there is no kind in it to register.
     test-an-all-null-types-contribution-assembles-with-no-registry = {
       expr =
-        (assemble {
-          contributions = [
-            {
-              name = "L";
-              vertices = [ (mkId "host" "a") ];
-              types.${mkId "host" "a"} = null;
-            }
-          ];
-        }).nodes.${mkId "host" "a"}.type;
+        (assemble { } [
+          {
+            name = "L";
+            vertices = [ (mkId "host" "a") ];
+            types.${mkId "host" "a"} = null;
+          }
+        ]).nodes.${mkId "host" "a"}.type;
       expected = null;
     };
     # CONTROL against the repair weakening the membership refusal: a null `types` entry for an id no
@@ -1065,15 +1001,15 @@ in
     # reaches the fold, so dropping an empty-layer id cannot make a node vanish — an id known only
     # from a content key never reaches the constructor to be dropped.
     test-a-null-types-entry-for-an-undeclared-id-is-still-refused = {
-      expr = throws (assemble {
-        contributions = [
+      expr = throws (
+        assemble { } [
           {
             name = "L";
             vertices = [ (mkId "host" "a") ];
             types.${mkId "host" "ghost"} = null;
           }
-        ];
-      });
+        ]
+      );
       expected = true;
     };
 
@@ -1105,21 +1041,15 @@ in
     # content key does. Asserted over all three graph families, because the class is "a contributed
     # graph's vertex set" and the families are three different carriers of it.
     test-an-isolated-vertex-in-the-containment-graph-is-refused = {
-      expr = throws (union {
-        contributions = [ stowawayParent ];
-      });
+      expr = throws (union { } [ stowawayParent ]);
       expected = true;
     };
     test-an-isolated-vertex-in-the-import-graph-is-refused = {
-      expr = throws (union {
-        contributions = [ stowawayImport ];
-      });
+      expr = throws (union { } [ stowawayImport ]);
       expected = true;
     };
     test-an-isolated-vertex-under-a-custom-label-is-refused = {
-      expr = throws (union {
-        contributions = [ stowawayLabelled ];
-      });
+      expr = throws (union { } [ stowawayLabelled ]);
       expected = true;
     };
 
@@ -1206,10 +1136,7 @@ in
 
     # ── THE ISOLATED-VERTEX REFUSAL DOES NOT RIDE `strict` EITHER ──
     test-strict-false-does-not-disable-the-isolated-vertex-refusal = {
-      expr = throws (assemble {
-        contributions = [ stowawayParent ];
-        strict = false;
-      });
+      expr = throws (assemble { strict = false; } [ stowawayParent ]);
       expected = true;
     };
     # CONTROL: `strict = false` assembles the same graph once the vertex is declared, so the cell
@@ -1217,20 +1144,17 @@ in
     test-control-strict-false-assembles-a-declared-isolated-vertex = {
       expr =
         builtins.sort builtins.lessThan
-          (assemble {
-            contributions = [
-              (
-                stowawayParent
-                // {
-                  vertices = [
-                    (mkId "host" "a")
-                    (mkId "host" "stowaway")
-                  ];
-                }
-              )
-            ];
-            strict = false;
-          }).nodeOrder;
+          (assemble { strict = false; } [
+            (
+              stowawayParent
+              // {
+                vertices = [
+                  (mkId "host" "a")
+                  (mkId "host" "stowaway")
+                ];
+              }
+            )
+          ]).nodeOrder;
       expected = [
         (mkId "host" "a")
         (mkId "host" "stowaway")
@@ -1240,7 +1164,7 @@ in
     # ★ AND IT IS NOT A PROPERTY OF WHICH KEY A CALLER READS. The cell reads `decls`, which a
     # contribution carrying only a stowaway vertex does not populate at all.
     test-reading-only-the-content-half-is-refused-for-a-stowaway-too = {
-      expr = throws (union { contributions = [ stowawayParent ]; }).decls;
+      expr = throws (union { } [ stowawayParent ]).decls;
       expected = true;
     };
     # CONTROL against over-refusal, on the suite's own working pair PLUS `total` — whose
@@ -1262,42 +1186,34 @@ in
     # only ever sees one spelling of it is a cell about that spelling. A dropped key is the silent
     # failure this library exists to not have: the layer's content vanishes and the run stays green.
     test-an-unheard-of-key-is-refused-rather-than-dropped = {
-      expr = throws (union {
-        contributions = [ (base // { attrs = { }; }) ];
-      });
+      expr = throws (union { } [ (base // { attrs = { }; }) ]);
       expected = true;
     };
     test-a-one-character-misspelling-of-a-known-key-is-refused = {
-      expr = throws (union {
-        contributions = [
+      expr = throws (
+        union { } [
           (builtins.removeAttrs base [ "decls" ] // { decl = base.decls; })
-        ];
-      });
+        ]
+      );
       expected = true;
     };
     # CONTROL: a contribution carrying EVERY key the record has passes, in the same run and through
     # the same predicate. Without it the three refusals above are equally consistent with a
     # constructor that refuses whatever it is handed.
     test-control-a-contribution-carrying-every-key-passes = {
-      expr = throws (union {
-        contributions = [ total ];
-      });
+      expr = throws (union { } [ total ]);
       expected = false;
     };
 
     # ── THE NAME IS REQUIRED, because every refusal this protocol makes is stated in it ──
     test-a-contribution-without-a-name-is-refused = {
-      expr = throws (union {
-        contributions = [ (builtins.removeAttrs base [ "name" ]) ];
-      });
+      expr = throws (union { } [ (builtins.removeAttrs base [ "name" ]) ]);
       expected = true;
     };
     # An EMPTY name is refused too, and not defaulted: it is writable, it reads like a declaration,
     # and it names nothing — so it degrades the naming property exactly as an absent one does.
     test-an-empty-name-is-refused = {
-      expr = throws (union {
-        contributions = [ (base // { name = ""; }) ];
-      });
+      expr = throws (union { } [ (base // { name = ""; }) ]);
       expected = true;
     };
 
@@ -1362,7 +1278,7 @@ in
     # vertex order landed. Without an arm that genuinely fails, a green precondition oracle tells a
     # consumer nothing.
     test-an-unmet-substrate-is-refused-by-name = {
-      expr = throws (genAssembleUnmet.assemble { contributions = [ base ]; });
+      expr = throws (genAssembleUnmet.assemble { } [ base ]);
       expected = true;
     };
     test-control-the-met-substrate-assembles = {

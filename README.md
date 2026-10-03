@@ -205,21 +205,8 @@ genAssemble = inputs.gen-assemble.lib {
   algebra = inputs.gen-algebra.lib;
 };
 
+# `assemble { kinds?; strategies?; strict?; } contributions` — the options first, the contributions last.
 genAssemble.assemble {
-  contributions = [
-    {
-      name = "hosts"; # required: every refusal this protocol makes is stated in it
-      # The members this layer declares. Every id an edge below names must be declared HERE or by
-      # another contribution — an undeclared endpoint is refused, naming this layer and the id.
-      vertices = [ "host:web1" "host:db1" "env:prod" ];
-      parentGraph = scope.edge {
-        from = "host:web1";
-        to = "env:prod";
-      };
-      decls."host:web1" = { tier = "base"; };
-      types."host:web1" = "host"; # the per-node FACT, declared in the vocabulary below
-    }
-  ];
   # THE FRAMEWORK'S VOCABULARY, one per assembly — not an eighth contribution key. A `types` entry
   # is what ONE LAYER says about ONE NODE; the registry is the kind set those names are declared in,
   # carrying the `below` relation they are ranked in, so it belongs to the assembly rather than to a
@@ -227,7 +214,20 @@ genAssemble.assemble {
   # the merge. Omit it and a contribution declaring no kind assembles unchanged; declare a kind
   # without it, or a spelling it does not carry, and the substrate refuses by name.
   kinds = scope.mkKinds [ (scope.mkKind { } "host") ];
-}
+} [
+  {
+    name = "hosts"; # required: every refusal this protocol makes is stated in it
+    # The members this layer declares. Every id an edge below names must be declared HERE or by
+    # another contribution — an undeclared endpoint is refused, naming this layer and the id.
+    vertices = [ "host:web1" "host:db1" "env:prod" ];
+    parentGraph = scope.edge {
+      from = "host:web1";
+      to = "env:prod";
+    };
+    decls."host:web1" = { tier = "base"; };
+    types."host:web1" = "host"; # the per-node FACT, declared in the vocabulary above
+  }
+]
 ```
 
 ### Standalone (non-flake)

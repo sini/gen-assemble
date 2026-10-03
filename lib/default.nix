@@ -63,28 +63,33 @@ let
   # declares itself total over, unhonourable one layer down. Nor is it derived from the union'd
   # `types`: auto-registering every declared spelling is the free-form kind set the substrate's
   # registry was created to close, and it would make a typo a kind.
-  # den-hoag-7gp66 P1: a native closed formal aborts past `tryEval` on an unknown or a missing
-  # field (ADR-0025 item 1), so the door takes a bare `args:` and checks it explicitly instead —
-  # MIXED (`contributions` required, the rest optional), closed on both axes.
+  #
+  # `assemble { kinds ? null; strategies ? { }; strict ? true; } contributions` (den-hoag-7gp66 P2,
+  # rules 2 and 4): the three defaulted fields are one closed options set, first in the call and
+  # refused by name at its own application; the contributions are the subject, positional and
+  # last.
   assemble =
-    args:
-    let
-      checked = prelude.checkOptions "gen-assemble.assemble" [
-        "contributions"
-        "strategies"
-        "strict"
-        "kinds"
-      ] (prelude.checkRequired "gen-assemble.assemble" [ "contributions" ] args);
-      contributions = checked.contributions;
-      strategies = checked.strategies or { };
-      strict = checked.strict or true;
-      kinds = checked.kinds or null;
-    in
-    preconditions.require (
-      scope.buildRoots (
-        contribute.union { inherit contributions strategies; } // { inherit strict kinds; }
-      )
-    );
+    prelude.door
+      {
+        name = "gen-assemble.assemble";
+        optional = [
+          "kinds"
+          "strategies"
+          "strict"
+        ];
+      }
+      (
+        o: contributions:
+        preconditions.require (
+          scope.buildRoots (
+            contribute.unionCore (o.strategies or { }) contributions
+            // {
+              strict = o.strict or true;
+              kinds = o.kinds or null;
+            }
+          )
+        )
+      );
 in
 {
   inherit assemble;
