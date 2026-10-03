@@ -365,18 +365,15 @@ let
   undeclaredGraphVertices =
     contributions: undeclaredGraphVerticesOf (prelude.imap0 normalise contributions);
 
-  # den-hoag-7gp66 P1: MIXED door (`contributions` required, `strategies` optional), same reason
-  # as `assemble` above it on the surface — see that door's comment.
-  union =
-    args:
-    let
-      checked = prelude.checkOptions "gen-assemble.union" [
-        "contributions"
-        "strategies"
-      ] (prelude.checkRequired "gen-assemble.union" [ "contributions" ] args);
-      contributions = checked.contributions;
-      strategies = checked.strategies or { };
-    in
+  # `union { strategies ? { }; } contributions` (den-hoag-7gp66 P2, rules 2 and 4): the defaulted
+  # field is one closed options set, first, and the contributions — what is unioned — are the
+  # subject, positional and last. `unionCore` is the unchecked core `assemble` calls.
+  union = prelude.door {
+    name = "gen-assemble.union";
+    optional = [ "strategies" ];
+  } (o: unionCore (o.strategies or { }));
+  unionCore =
+    strategies: contributions:
     let
       cs = prelude.imap0 normalise contributions;
 
@@ -540,6 +537,7 @@ let
 in
 {
   inherit
+    unionCore
     union
     reserved
     normalise

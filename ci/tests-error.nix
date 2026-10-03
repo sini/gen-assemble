@@ -75,43 +75,29 @@ in
     };
 
     test-unmet-substrate-refusal-names-the-record = {
-      expr = genAssembleUnmet.assemble { contributions = [ ]; };
+      expr = genAssembleUnmet.assemble { } [ ];
       expectedError.msg = exactly unmetSubstrateNamesTheRecord;
     };
 
-    # ── THE CLOSED-DOOR CHECKS (den-hoag-7gp66 P1) ──
-    # `assemble` and `union`'s own messages, from gen-prelude's `checkOptions`/`checkRequired`;
+    # ── THE DOOR CHECKS (den-hoag-7gp66 P2) ──
+    # `assemble` and `union`'s own messages, from gen-prelude's `checkOptions` at the options step;
     # catchability alone is `ci/tests/door-checks.nix`'s job, this is WHICH refusal fired (R6: the
     # published door first, the shared construct as secondary detail).
-    test-assemble-missing-required-field-names-the-door = {
-      expr = genAssemble.assemble { kinds = null; };
-      expectedError.msg = exactly "gen-assemble.assemble: required field 'contributions' is missing (required: 'contributions') (in prelude.checkRequired)";
-    };
     test-assemble-unknown-option-names-the-door = {
-      expr = genAssemble.assemble {
-        contributions = [ ];
-        zzasm7q2v = 1;
-      };
-      expectedError.msg = exactly "gen-assemble.assemble: 'zzasm7q2v' is not an option of this door; the options are closed (accepted: 'contributions', 'strategies', 'strict', 'kinds') (in prelude.checkOptions)";
+      expr = genAssemble.assemble { zzasm7q2v = 1; };
+      expectedError.msg = exactly "gen-assemble.assemble: 'zzasm7q2v' is not an option of this door; the options are closed (accepted: 'kinds', 'strategies', 'strict') (in prelude.checkOptions)";
     };
     test-assemble-non-set-argument-names-the-door = {
       expr = genAssemble.assemble 1;
-      expectedError.msg = exactly "gen-assemble.assemble: the argument must be an attrset, not a int (required: 'contributions') (in prelude.checkRequired)";
-    };
-    test-union-missing-required-field-names-the-door = {
-      expr = genAssemble.union { strategies = { }; };
-      expectedError.msg = exactly "gen-assemble.union: required field 'contributions' is missing (required: 'contributions') (in prelude.checkRequired)";
+      expectedError.msg = exactly "gen-assemble.assemble: the options must be an attrset, not a int (accepted: 'kinds', 'strategies', 'strict') (in prelude.checkOptions)";
     };
     test-union-unknown-option-names-the-door = {
-      expr = genAssemble.union {
-        contributions = [ ];
-        zzasm7q2v = 1;
-      };
-      expectedError.msg = exactly "gen-assemble.union: 'zzasm7q2v' is not an option of this door; the options are closed (accepted: 'contributions', 'strategies') (in prelude.checkOptions)";
+      expr = genAssemble.union { zzasm7q2v = 1; };
+      expectedError.msg = exactly "gen-assemble.union: 'zzasm7q2v' is not an option of this door; the options are closed (accepted: 'strategies') (in prelude.checkOptions)";
     };
     test-union-non-set-argument-names-the-door = {
       expr = genAssemble.union 1;
-      expectedError.msg = exactly "gen-assemble.union: the argument must be an attrset, not a int (required: 'contributions') (in prelude.checkRequired)";
+      expectedError.msg = exactly "gen-assemble.union: the options must be an attrset, not a int (accepted: 'strategies') (in prelude.checkOptions)";
     };
   };
 }
