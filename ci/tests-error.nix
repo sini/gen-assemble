@@ -27,10 +27,14 @@
   genAssemble,
   genAssembleUnmet,
   lib,
+  prelude,
   ...
 }:
 let
   exactly = msg: "^" + lib.escapeRegex msg + "$";
+  # gen-prelude's refusal text, composed with this library's own literal door, field and accepted
+  # set (den-hoag-7jltk): every assertion kept, none of gen-prelude's wording copied.
+  inherit (prelude) refusals;
 
   # `genAssembleUnmet` is this library over `gen-scope` pinned one commit before the declared vertex
   # order landed — at that pin the substrate does not publish `buildRoots` at all, so the ENTRY check
@@ -85,19 +89,25 @@ in
     # published door first, the shared construct as secondary detail).
     test-assemble-unknown-option-names-the-door = {
       expr = genAssemble.assemble { zzasm7q2v = 1; };
-      expectedError.msg = exactly "gen-assemble.assemble: 'zzasm7q2v' is not an option of this door; the options are closed (accepted: 'kinds', 'strategies', 'strict') (in prelude.checkOptions)";
+      expectedError.msg = exactly (
+        refusals.unknownOption "gen-assemble.assemble" [ "kinds" "strategies" "strict" ] "zzasm7q2v"
+      );
     };
     test-assemble-non-set-argument-names-the-door = {
       expr = genAssemble.assemble 1;
-      expectedError.msg = exactly "gen-assemble.assemble: the options must be an attrset, not a int (accepted: 'kinds', 'strategies', 'strict') (in prelude.checkOptions)";
+      expectedError.msg = exactly (
+        refusals.optionsNotASet "gen-assemble.assemble" [ "kinds" "strategies" "strict" ] 1
+      );
     };
     test-union-unknown-option-names-the-door = {
       expr = genAssemble.union { zzasm7q2v = 1; };
-      expectedError.msg = exactly "gen-assemble.union: 'zzasm7q2v' is not an option of this door; the options are closed (accepted: 'strategies') (in prelude.checkOptions)";
+      expectedError.msg = exactly (
+        refusals.unknownOption "gen-assemble.union" [ "strategies" ] "zzasm7q2v"
+      );
     };
     test-union-non-set-argument-names-the-door = {
       expr = genAssemble.union 1;
-      expectedError.msg = exactly "gen-assemble.union: the options must be an attrset, not a int (accepted: 'strategies') (in prelude.checkOptions)";
+      expectedError.msg = exactly (refusals.optionsNotASet "gen-assemble.union" [ "strategies" ] 1);
     };
   };
 }
