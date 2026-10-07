@@ -18,6 +18,7 @@
     gen-scope.url = "github:sini/gen-scope";
     gen-scope.inputs.gen-prelude.follows = "gen-prelude";
     gen-scope.inputs.gen-graph.inputs.gen-prelude.follows = "gen-prelude";
+    gen-scope.inputs.gen-algebra.follows = "gen-algebra";
     gen-scope-unmet.url = "github:sini/gen-scope/ff5fe420a2869ae13d0096e2604579c88f23da7a";
 
     # THE ALGEBRA AND THE PRELUDE ARE PINNED HERE. `gen-scope` no longer declares `gen-schema`, so
